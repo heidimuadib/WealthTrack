@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { monthName } from '../utils/format';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -12,6 +12,10 @@ const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.
 // native module and another Gradle rebuild; this needs neither and stays
 // consistent with the rest of the design.
 const DatePickerModal = ({ visible, value, onSelect, onClose, allowFuture = false }) => {
+    const theme = useTheme();
+    const { colors, typography } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const initial = value ? new Date(value) : new Date();
     const [view, setView] = useState({
         month: initial.getMonth(),
@@ -145,7 +149,8 @@ const DatePickerModal = ({ visible, value, onSelect, onClose, allowFuture = fals
 
 const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography }) =>
+    StyleSheet.create({
     backdrop: {
         flex: 1,
         backgroundColor: 'rgba(22,48,45,0.45)',
@@ -219,6 +224,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: colors.brand,
     },
-});
+    });
 
 export default DatePickerModal;

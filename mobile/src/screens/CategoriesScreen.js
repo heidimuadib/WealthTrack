@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -21,7 +21,7 @@ import ErrorState from '../components/ErrorState';
 import ScreenHeader from '../components/ScreenHeader';
 import ColorPicker from '../components/ColorPicker';
 import { useFeedback } from '../components/FeedbackProvider';
-import { categoryPalette, colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { randomCategoryColor } from '../utils/color';
 import {
     useCategories,
@@ -32,6 +32,10 @@ import {
 import { errorMessage } from '../utils/error';
 
 const CategoriesScreen = ({ navigation }) => {
+    const theme = useTheme();
+    const { colors, categoryPalette } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [editorOpen, setEditorOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [name, setName] = useState('');
@@ -248,7 +252,8 @@ const CategoriesScreen = ({ navigation }) => {
 
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography }) =>
+    StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
@@ -299,7 +304,7 @@ const styles = StyleSheet.create({
     },
     backdropFill: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(22,48,45,0.5)',
+        backgroundColor: colors.scrim,
     },
     sheet: {
         backgroundColor: colors.surface,
@@ -333,6 +338,6 @@ const styles = StyleSheet.create({
     cancel: {
         marginTop: spacing.xs,
     },
-});
+    });
 
 export default CategoriesScreen;

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { ChevronDown, Check, Search, Tag, Settings2 } from 'lucide-react-native';
 import Input from './Input';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 
 // Wrapped chips grew a row for every few categories and pushed the save button
 // down the screen. A field plus a sheet is a constant 52px no matter how many
@@ -20,6 +20,10 @@ import { colors, radius, spacing, typography } from '../theme';
 const SEARCH_THRESHOLD = 8;
 
 const CategorySelect = ({ label = 'Category', categories = [], value, onChange, onManage }) => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
 
@@ -161,7 +165,8 @@ const CategorySelect = ({ label = 'Category', categories = [], value, onChange, 
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography }) =>
+    StyleSheet.create({
     wrapper: {
         marginBottom: spacing.l,
     },
@@ -201,7 +206,7 @@ const styles = StyleSheet.create({
     },
     backdropFill: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(22,48,45,0.5)',
+        backgroundColor: colors.scrim,
     },
     sheet: {
         backgroundColor: colors.surface,
@@ -271,6 +276,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: colors.brand,
     },
-});
+    });
 
 export default CategorySelect;

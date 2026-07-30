@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import React, { useEffect, useMemo } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Home, List, Plus, PieChart, Settings, Wallet } from 'lucide-react-native';
@@ -13,26 +13,38 @@ import SettingsScreen from '../screens/SettingsScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import LoginScreen from '../screens/LoginScreen';
 
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import useAuthStore from '../store/authStore';
 import { restoreSession } from '../services/session';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-const navTheme = {
-    ...DefaultTheme,
-    colors: {
-        ...DefaultTheme.colors,
-        background: colors.canvas,
-        card: colors.surface,
-        primary: colors.brand,
-        border: colors.border,
-        text: colors.textPrimary,
-    },
+// React Navigation paints the gap between screens during a transition, so it
+// needs the palette too — otherwise a white flash shows through every push in
+// dark mode.
+const buildNavTheme = ({ colors, isDark }) => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+
+    return {
+        ...base,
+        colors: {
+            ...base.colors,
+            background: colors.canvas,
+            card: colors.surface,
+            primary: colors.brand,
+            border: colors.border,
+            text: colors.textPrimary,
+        },
+    };
 };
 
-const MainTabs = () => (
+const MainTabs = () => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
+    return (
     <Tab.Navigator
         screenOptions={{
             headerShown: false,
@@ -80,21 +92,31 @@ const MainTabs = () => (
             options={{ tabBarIcon: ({ color }) => <Settings color={color} size={21} /> }}
         />
     </Tab.Navigator>
-);
+    );
+};
 
-const SplashScreen = () => (
-    <View style={styles.splash}>
-        <View style={styles.splashMark}>
-            <Wallet color={colors.onBrand} size={26} />
+const SplashScreen = () => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
+    return (
+        <View style={styles.splash}>
+            <View style={styles.splashMark}>
+                <Wallet color={colors.onBrand} size={26} />
+            </View>
+            <Text style={styles.splashName}>WealthTrack</Text>
+            <ActivityIndicator color={colors.brand} />
         </View>
-        <Text style={styles.splashName}>WealthTrack</Text>
-        <ActivityIndicator color={colors.brand} />
-    </View>
-);
+    );
+};
 
 const AppNavigator = () => {
+    const theme = useTheme();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const isRestoring = useAuthStore((state) => state.isRestoring);
+
+    const navTheme = useMemo(() => buildNavTheme(theme), [theme]);
 
     useEffect(() => {
         restoreSession();
@@ -108,6 +130,11 @@ const AppNavigator = () => {
 
     return (
         <NavigationContainer theme={navTheme}>
+            {/* Dark canvas needs light status bar icons, and vice versa. */}
+            <StatusBar
+                barStyle={theme.isDark ? 'light-content' : 'dark-content'}
+                backgroundColor={theme.colors.canvas}
+            />
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {isAuthenticated ? (
                     <>
@@ -125,7 +152,8 @@ const AppNavigator = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors }) =>
+    StyleSheet.create({
     tabBar: {
         backgroundColor: colors.surface,
         borderTopColor: colors.border,
@@ -169,6 +197,6 @@ const styles = StyleSheet.create({
         color: colors.textPrimary,
         marginBottom: spacing.xl,
     },
-});
+    });
 
 export default AppNavigator;

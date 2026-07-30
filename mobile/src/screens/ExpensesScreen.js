@@ -19,7 +19,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { useExpenses, useDeleteExpense } from '../hooks/useExpenses';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { queryKeys } from '../lib/queryKeys';
@@ -30,6 +30,10 @@ import { currentMonthYear, formatCurrency, formatDayLabel } from '../utils/forma
 const NO_EXPENSES = [];
 
 const ExpensesScreen = ({ navigation }) => {
+    const theme = useTheme();
+    const { colors, typography } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [period, setPeriod] = useState(currentMonthYear);
     const [query, setQuery] = useState('');
 
@@ -261,7 +265,8 @@ const ExpensesScreen = ({ navigation }) => {
 
 const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography }) =>
+    StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
@@ -349,6 +354,6 @@ const styles = StyleSheet.create({
         marginTop: spacing.l,
         fontSize: 12,
     },
-});
+    });
 
 export default ExpensesScreen;

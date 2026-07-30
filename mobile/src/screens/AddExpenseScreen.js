@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -17,7 +17,7 @@ import CategorySelect from '../components/CategorySelect';
 import DatePickerModal from '../components/DatePickerModal';
 import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { useCategories } from '../hooks/useCategories';
 import { useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
@@ -31,6 +31,10 @@ const NO_CATEGORIES = [];
 // Serves both the "Add" tab and the "EditExpense" stack route — the only
 // difference is whether an existing expense arrived in the route params.
 const AddExpenseScreen = ({ navigation, route }) => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const editing = route.params?.expense || null;
 
     const [amount, setAmount] = useState('');
@@ -238,7 +242,8 @@ const AddExpenseScreen = ({ navigation, route }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors }) =>
+    StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
@@ -295,6 +300,6 @@ const styles = StyleSheet.create({
     delete: {
         marginTop: spacing.m,
     },
-});
+    });
 
 export default AddExpenseScreen;

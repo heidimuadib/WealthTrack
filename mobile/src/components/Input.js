@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TextInput, View, Text, StyleSheet } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 
 const Input = ({
     label,
@@ -17,6 +17,10 @@ const Input = ({
     multiline = false,
     style,
 }) => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [focused, setFocused] = useState(false);
 
     return (
@@ -55,64 +59,65 @@ const Input = ({
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        marginBottom: spacing.l,
-    },
-    label: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: colors.textSecondary,
-        marginBottom: spacing.s,
-    },
-    field: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        minHeight: 52,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        borderRadius: radius.m,
-        paddingHorizontal: spacing.l,
-        backgroundColor: colors.surface,
-    },
-    fieldFocused: {
-        borderColor: colors.brand,
-        backgroundColor: colors.surface,
-    },
-    fieldError: {
-        borderColor: colors.danger,
-    },
-    fieldMultiline: {
-        minHeight: 92,
-        alignItems: 'flex-start',
-        paddingVertical: spacing.m,
-    },
-    prefix: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.textMuted,
-        marginRight: spacing.xs,
-    },
-    leftIcon: {
-        marginRight: spacing.m,
-    },
-    rightSlot: {
-        marginLeft: spacing.m,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        color: colors.textPrimary,
-        padding: 0,
-    },
-    inputMultiline: {
-        textAlignVertical: 'top',
-    },
-    error: {
-        fontSize: 12,
-        color: colors.danger,
-        marginTop: spacing.xs,
-    },
-});
+const createStyles = ({ colors }) =>
+    StyleSheet.create({
+        container: {
+            marginBottom: spacing.l,
+        },
+        label: {
+            fontSize: 13,
+            fontWeight: '600',
+            color: colors.textSecondary,
+            marginBottom: spacing.s,
+        },
+        field: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            minHeight: 52,
+            borderWidth: 1.5,
+            borderColor: colors.border,
+            borderRadius: radius.m,
+            paddingHorizontal: spacing.l,
+            backgroundColor: colors.surface,
+        },
+        fieldFocused: {
+            borderColor: colors.brand,
+            backgroundColor: colors.surface,
+        },
+        fieldError: {
+            borderColor: colors.danger,
+        },
+        fieldMultiline: {
+            minHeight: 92,
+            alignItems: 'flex-start',
+            paddingVertical: spacing.m,
+        },
+        prefix: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: colors.textMuted,
+            marginRight: spacing.xs,
+        },
+        leftIcon: {
+            marginRight: spacing.m,
+        },
+        rightSlot: {
+            marginLeft: spacing.m,
+        },
+        input: {
+            flex: 1,
+            fontSize: 16,
+            color: colors.textPrimary,
+            padding: 0,
+        },
+        inputMultiline: {
+            textAlignVertical: 'top',
+        },
+        error: {
+            fontSize: 12,
+            color: colors.danger,
+            marginTop: spacing.xs,
+        },
+    });
 
 export default Input;

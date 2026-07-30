@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { AlertTriangle, Info } from 'lucide-react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 
 // Replaces Alert.alert so confirmations look like the rest of the app instead
 // of a stock Android dialog.
@@ -16,6 +16,10 @@ const ConfirmDialog = ({
     onConfirm,
     onCancel,
 }) => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const Icon = destructive ? AlertTriangle : Info;
     const accent = destructive ? colors.danger : colors.brand;
     const accentTint = destructive ? colors.dangerTint : colors.brandTint;
@@ -65,67 +69,68 @@ const ConfirmDialog = ({
     );
 };
 
-const styles = StyleSheet.create({
-    backdrop: {
-        flex: 1,
-        backgroundColor: 'rgba(22,48,45,0.5)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: spacing.xl,
-    },
-    sheet: {
-        width: '100%',
-        maxWidth: 360,
-        backgroundColor: colors.surface,
-        borderRadius: radius.xl,
-        padding: spacing.xl,
-        alignItems: 'center',
-    },
-    iconWrap: {
-        width: 52,
-        height: 52,
-        borderRadius: radius.round,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: spacing.l,
-    },
-    title: {
-        ...typography.h2,
-        textAlign: 'center',
-        marginBottom: spacing.s,
-    },
-    message: {
-        ...typography.caption,
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: spacing.s,
-    },
-    actions: {
-        flexDirection: 'row',
-        marginTop: spacing.xl,
-        width: '100%',
-    },
-    button: {
-        flex: 1,
-        height: 48,
-        borderRadius: radius.m,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginHorizontal: spacing.xs,
-    },
-    cancel: {
-        backgroundColor: colors.surfaceAlt,
-    },
-    cancelText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    confirmText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: colors.onBrand,
-    },
-});
+const createStyles = ({ colors, typography }) =>
+    StyleSheet.create({
+        backdrop: {
+            flex: 1,
+            backgroundColor: colors.scrim,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: spacing.xl,
+        },
+        sheet: {
+            width: '100%',
+            maxWidth: 360,
+            backgroundColor: colors.surface,
+            borderRadius: radius.xl,
+            padding: spacing.xl,
+            alignItems: 'center',
+        },
+        iconWrap: {
+            width: 52,
+            height: 52,
+            borderRadius: radius.round,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: spacing.l,
+        },
+        title: {
+            ...typography.h2,
+            textAlign: 'center',
+            marginBottom: spacing.s,
+        },
+        message: {
+            ...typography.caption,
+            textAlign: 'center',
+            lineHeight: 20,
+            marginBottom: spacing.s,
+        },
+        actions: {
+            flexDirection: 'row',
+            marginTop: spacing.xl,
+            width: '100%',
+        },
+        button: {
+            flex: 1,
+            height: 48,
+            borderRadius: radius.m,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginHorizontal: spacing.xs,
+        },
+        cancel: {
+            backgroundColor: colors.surfaceAlt,
+        },
+        cancelText: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.textSecondary,
+        },
+        confirmText: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.onBrand,
+        },
+    });
 
 export default ConfirmDialog;

@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { colors, spacing, typography } from '../theme';
+import { spacing, useTheme } from '../theme';
 import { formatCompact } from '../utils/format';
 
 // Built directly on react-native-svg rather than a chart library so the ring
 // matches the rest of the design. Segments are drawn by advancing the dash
 // offset around a single stroked circle.
 const DonutChart = ({ data = [], size = 172, thickness = 20, caption = 'Total' }) => {
+    const theme = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const radius = (size - thickness) / 2;
     const circumference = 2 * Math.PI * radius;
     const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -31,7 +34,7 @@ const DonutChart = ({ data = [], size = 172, thickness = 20, caption = 'Total' }
                         cx={size / 2}
                         cy={size / 2}
                         r={radius}
-                        stroke={colors.surfaceAlt}
+                        stroke={theme.colors.surfaceAlt}
                         strokeWidth={thickness}
                         fill="none"
                     />
@@ -63,28 +66,29 @@ const DonutChart = ({ data = [], size = 172, thickness = 20, caption = 'Total' }
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    center: {
-        ...StyleSheet.absoluteFillObject,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: spacing.xl,
-    },
-    caption: {
-        ...typography.overline,
-        marginBottom: 2,
-    },
-    total: {
-        fontSize: 22,
-        fontWeight: '700',
-        letterSpacing: -0.5,
-        color: colors.textPrimary,
-        fontVariant: ['tabular-nums'],
-    },
-});
+const createStyles = ({ colors, typography }) =>
+    StyleSheet.create({
+        container: {
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        center: {
+            ...StyleSheet.absoluteFillObject,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: spacing.xl,
+        },
+        caption: {
+            ...typography.overline,
+            marginBottom: 2,
+        },
+        total: {
+            fontSize: 22,
+            fontWeight: '700',
+            letterSpacing: -0.5,
+            color: colors.textPrimary,
+            fontVariant: ['tabular-nums'],
+        },
+    });
 
 export default DonutChart;

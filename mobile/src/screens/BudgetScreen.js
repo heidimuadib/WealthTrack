@@ -22,22 +22,17 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
-import {
-    balanceGradient,
-    dangerGradient,
-    colors,
-    gradientAngles,
-    radius,
-    shadows,
-    spacing,
-    typography,
-} from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBudget, useSetBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { currentMonthYear, formatCurrency, formatCompact } from '../utils/format';
 
 const BudgetScreen = () => {
+    const theme = useTheme();
+    const { colors, balanceGradient, dangerGradient, gradientAngles } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [period, setPeriod] = useState(currentMonthYear);
     const [draft, setDraft] = useState('');
 
@@ -224,7 +219,8 @@ const BudgetScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography, shadows }) =>
+    StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
@@ -302,6 +298,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         lineHeight: 17,
     },
-});
+    });
 
 export default BudgetScreen;

@@ -18,16 +18,7 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import ProgressBar from '../components/ProgressBar';
-import {
-    balanceGradient,
-    categoryPalette,
-    colors,
-    gradientAngles,
-    radius,
-    shadows,
-    spacing,
-    typography,
-} from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
@@ -45,6 +36,10 @@ import {
 const NO_EXPENSES = [];
 
 const HomeScreen = ({ navigation }) => {
+    const theme = useTheme();
+    const { colors, typography, categoryPalette, balanceGradient, gradientAngles } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [period, setPeriod] = useState(currentMonthYear);
 
     const user = useAuthStore((state) => state.user);
@@ -109,7 +104,7 @@ const HomeScreen = ({ navigation }) => {
                 color: item.color || categoryPalette[index % categoryPalette.length],
                 share: totalSpent > 0 ? item.value / totalSpent : 0,
             }));
-    }, [expenses, totalSpent]);
+    }, [expenses, totalSpent, categoryPalette]);
 
     const remaining = budget - totalSpent;
     const isOver = remaining < 0;
@@ -310,7 +305,8 @@ const HomeScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography, shadows }) =>
+    StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
@@ -503,6 +499,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: colors.brand,
     },
-});
+    });
 
 export default HomeScreen;

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Check, Shuffle } from 'lucide-react-native';
-import { categoryPalette, colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import {
     buildColorGrid,
     contrastOn,
@@ -10,7 +10,7 @@ import {
     randomCategoryColor,
 } from '../utils/color';
 
-const Swatch = ({ color, selected, onPress, size = 36 }) => (
+const Swatch = ({ color, selected, onPress, size = 36, styles }) => (
     <TouchableOpacity
         onPress={() => onPress(color)}
         activeOpacity={0.8}
@@ -25,6 +25,10 @@ const Swatch = ({ color, selected, onPress, size = 36 }) => (
 );
 
 const ColorPicker = ({ value, onChange }) => {
+    const theme = useTheme();
+    const { colors, categoryPalette } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [hexDraft, setHexDraft] = useState(value || '');
     const [hexError, setHexError] = useState(false);
 
@@ -88,6 +92,7 @@ const ColorPicker = ({ value, onChange }) => {
                         color={color}
                         selected={value === color}
                         onPress={applyColor}
+                        styles={styles}
                     />
                 ))}
             </View>
@@ -101,6 +106,7 @@ const ColorPicker = ({ value, onChange }) => {
                         selected={value === color}
                         onPress={applyColor}
                         size={30}
+                        styles={styles}
                     />
                 ))}
             </View>
@@ -108,7 +114,8 @@ const ColorPicker = ({ value, onChange }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors }) =>
+    StyleSheet.create({
     preview: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -184,6 +191,6 @@ const styles = StyleSheet.create({
         borderWidth: 2.5,
         borderColor: colors.textPrimary,
     },
-});
+    });
 
 export default ColorPicker;

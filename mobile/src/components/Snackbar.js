@@ -1,10 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Text, StyleSheet, TouchableOpacity, Easing } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 
 // Non-blocking feedback. Used for "saved" confirmations and, more importantly,
 // for the undo window after deleting something.
 const Snackbar = ({ visible, message, actionLabel, onAction }) => {
+    const theme = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const translateY = useRef(new Animated.Value(80)).current;
     const opacity = useRef(new Animated.Value(0)).current;
 
@@ -45,38 +48,39 @@ const Snackbar = ({ visible, message, actionLabel, onAction }) => {
 
 const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
 
-const styles = StyleSheet.create({
-    container: {
-        position: 'absolute',
-        left: spacing.l,
-        right: spacing.l,
-        // Clears the 64pt tab bar.
-        bottom: 80,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.textPrimary,
-        borderRadius: radius.m,
-        paddingVertical: spacing.l,
-        paddingHorizontal: spacing.l,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    message: {
-        flex: 1,
-        color: colors.surface,
-        fontSize: 14,
-        lineHeight: 19,
-    },
-    action: {
-        marginLeft: spacing.l,
-        color: '#7FD1C7',
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: 0.3,
-    },
-});
+const createStyles = ({ colors }) =>
+    StyleSheet.create({
+        container: {
+            position: 'absolute',
+            left: spacing.l,
+            right: spacing.l,
+            // Clears the 64pt tab bar.
+            bottom: 80,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.snackbarSurface,
+            borderRadius: radius.m,
+            paddingVertical: spacing.l,
+            paddingHorizontal: spacing.l,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            elevation: 8,
+        },
+        message: {
+            flex: 1,
+            color: colors.snackbarText,
+            fontSize: 14,
+            lineHeight: 19,
+        },
+        action: {
+            marginLeft: spacing.l,
+            color: colors.snackbarAction,
+            fontSize: 14,
+            fontWeight: '700',
+            letterSpacing: 0.3,
+        },
+    });
 
 export default Snackbar;

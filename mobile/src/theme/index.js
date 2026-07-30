@@ -1,54 +1,15 @@
-// Soft neo-bank palette: a warm cream canvas, one deep teal brand colour, and
-// a single accent gradient reserved for the balance card. Everything else is
-// flat — the old theme put a gradient on every surface, so nothing stood out.
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+    light,
+    dark,
+    categoryPaletteLight,
+    categoryPaletteDark,
+} from './palette';
 
-export const colors = {
-    // Canvas & surfaces
-    canvas: '#FAF6F0',
-    surface: '#FFFFFF',
-    surfaceAlt: '#F4EEE6',
-
-    // Brand
-    brand: '#0E5A54',
-    brandSoft: '#14807A',
-    brandTint: '#E3F0EE',
-    onBrand: '#FFFFFF',
-
-    // Text
-    textPrimary: '#16302D',
-    textSecondary: '#4C5B58',
-    textMuted: '#7B8785',
-    textOnBrandMuted: 'rgba(255,255,255,0.72)',
-
-    // Lines
-    border: '#E9E1D6',
-    borderStrong: '#DDD2C3',
-
-    // Semantic — desaturated so they sit calmly on cream
-    danger: '#C2453D',
-    dangerTint: '#FBEAE8',
-    success: '#2E7D5B',
-    successTint: '#E6F2EC',
-    warning: '#B57A21',
-    warningTint: '#FBF1DF',
-};
-
-// The one and only gradient in the app.
-export const balanceGradient = [colors.brand, colors.brandSoft];
-export const dangerGradient = ['#A8352E', '#C2453D'];
-
-export const gradientAngles = {
-    diagonal: { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
-    leftToRight: { start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
-    topToBottom: { start: { x: 0, y: 0 }, end: { x: 0, y: 1 } },
-};
-
-// Refined category swatches — muted enough to coexist on a cream canvas.
-export const categoryPalette = [
-    '#C2703D', '#3D7EA6', '#A6453D', '#7A5AA6',
-    '#2E7D5B', '#B5527E', '#3D8FA6', '#7B8785',
-];
-
+// Spacing and radius carry no colour, so they never change with the scheme and
+// stay plain imports rather than going through the hook.
 export const spacing = {
     xs: 4,
     s: 8,
@@ -70,7 +31,7 @@ export const radius = {
 // tabular numerals keep currency columns from shifting as digits change
 const tabular = { fontVariant: ['tabular-nums'] };
 
-export const typography = {
+const createTypography = (colors) => ({
     display: {
         fontSize: 36,
         fontWeight: '700',
@@ -114,22 +75,117 @@ export const typography = {
         color: colors.textPrimary,
         ...tabular,
     },
+});
+
+// A shadow that reads as depth on cream reads as nothing on a dark canvas —
+// there is no darker colour to cast against. Dark mode leans on the border
+// instead, keeping only the elevation Android needs for stacking order.
+const createShadows = (colors, isDark) =>
+    isDark
+        ? {
+              card: { elevation: 0 },
+              raised: {
+                  shadowColor: '#000000',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowRadius: 18,
+                  shadowOpacity: 0.45,
+                  elevation: 6,
+              },
+          }
+        : {
+              // Soft and wide rather than dark and tight.
+              card: {
+                  shadowColor: '#5B4A33',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 10,
+                  elevation: 2,
+              },
+              raised: {
+                  shadowColor: colors.brand,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowRadius: 18,
+                  shadowOpacity: 0.18,
+                  elevation: 6,
+              },
+          };
+
+export const gradientAngles = {
+    diagonal: { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
+    leftToRight: { start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
+    topToBottom: { start: { x: 0, y: 0 }, end: { x: 0, y: 1 } },
 };
 
-export const shadows = {
-    // Soft and wide rather than dark and tight.
-    card: {
-        shadowColor: '#5B4A33',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-        elevation: 2,
-    },
-    raised: {
-        shadowColor: '#0E5A54',
-        shadowOffset: { width: 0, height: 6 },
-        shadowRadius: 18,
-        shadowOpacity: 0.18,
-        elevation: 6,
-    },
+const buildTheme = (isDark) => {
+    const colors = isDark ? dark : light;
+
+    return {
+        isDark,
+        colors,
+        typography: createTypography(colors),
+        shadows: createShadows(colors, isDark),
+        categoryPalette: isDark ? categoryPaletteDark : categoryPaletteLight,
+        // The one and only gradient in the app.
+        balanceGradient: [colors.brand, colors.brandSoft],
+        dangerGradient: isDark ? ['#A8453D', '#E8776E'] : ['#A8352E', '#C2453D'],
+        gradientAngles,
+        spacing,
+        radius,
+    };
+};
+
+// Built once each rather than per render, so the object identity a screen's
+// useMemo depends on changes only when the scheme actually does.
+const THEMES = {
+    light: buildTheme(false),
+    dark: buildTheme(true),
+};
+
+const PREFERENCE_KEY = 'themePreference';
+export const THEME_PREFERENCES = ['system', 'light', 'dark'];
+
+const ThemeContext = createContext(null);
+
+export const useTheme = () => {
+    const value = useContext(ThemeContext);
+    if (!value) {
+        throw new Error('useTheme must be used inside <ThemeProvider>');
+    }
+    return value;
+};
+
+export const ThemeProvider = ({ children }) => {
+    const systemScheme = useColorScheme();
+    const [preference, setPreference] = useState('system');
+
+    useEffect(() => {
+        AsyncStorage.getItem(PREFERENCE_KEY)
+            .then((stored) => {
+                if (THEME_PREFERENCES.includes(stored)) {
+                    setPreference(stored);
+                }
+            })
+            .catch(() => {
+                // A missing or unreadable preference just means following the
+                // system, which is already the default.
+            });
+    }, []);
+
+    const value = useMemo(() => {
+        const resolved = preference === 'system' ? systemScheme : preference;
+        const theme = resolved === 'dark' ? THEMES.dark : THEMES.light;
+
+        return {
+            ...theme,
+            preference,
+            setPreference: (next) => {
+                setPreference(next);
+                AsyncStorage.setItem(PREFERENCE_KEY, next).catch(() => {
+                    // Best effort: the choice still applies for this session.
+                });
+            },
+        };
+    }, [preference, systemScheme]);
+
+    return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

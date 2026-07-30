@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -11,12 +11,16 @@ import {
 import { Wallet } from 'lucide-react-native';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { colors, radius, spacing, typography, shadows } from '../theme';
+import { radius, spacing, useTheme } from '../theme';
 import { authService } from '../services/api';
 import useAuthStore from '../store/authStore';
 import { errorMessage } from '../utils/error';
 
 const LoginScreen = () => {
+    const theme = useTheme();
+    const { colors } = theme;
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -138,7 +142,8 @@ const LoginScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, typography, shadows }) =>
+    StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
@@ -206,6 +211,6 @@ const styles = StyleSheet.create({
         color: colors.brand,
         fontWeight: '600',
     },
-});
+    });
 
 export default LoginScreen;
