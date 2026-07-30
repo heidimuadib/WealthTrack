@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -23,15 +23,15 @@ import ColorPicker from '../components/ColorPicker';
 import { useFeedback } from '../components/FeedbackProvider';
 import { categoryPalette, colors, radius, spacing, typography } from '../theme';
 import { randomCategoryColor } from '../utils/color';
-import { categoryService } from '../services/api';
-import { errorMessage, isHandledGlobally } from '../utils/error';
+import {
+    useCategories,
+    useCreateCategory,
+    useUpdateCategory,
+    useDeleteCategory,
+} from '../hooks/useCategories';
+import { errorMessage } from '../utils/error';
 
 const CategoriesScreen = ({ navigation }) => {
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [loadError, setLoadError] = useState(null);
-
     const [editorOpen, setEditorOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [name, setName] = useState('');
@@ -40,31 +40,20 @@ const CategoriesScreen = ({ navigation }) => {
 
     const { confirm, alert, notify } = useFeedback();
 
-    const load = useCallback(async () => {
-        try {
-            const res = await categoryService.getAll();
-            setCategories(res.data);
-            setLoadError(null);
-        } catch (err) {
-            // Without this the screen showed "No categories — add one so you
-            // can start recording expenses", inviting the user to duplicate
-            // categories they already have.
-            if (!isHandledGlobally(err)) {
-                setLoadError(err);
-            }
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const categoryQuery = useCategories();
+    const createCategory = useCreateCategory();
+    const updateCategory = useUpdateCategory();
+    const deleteCategory = useDeleteCategory();
 
-    const retry = useCallback(() => {
-        setLoading(true);
-        load();
-    }, [load]);
+    const categories = categoryQuery.data ?? [];
+    const loading = categoryQuery.isPending;
+    // Without this the screen showed "No categories — add one so you can start
+    // recording expenses", inviting the user to duplicate categories they
+    // already have.
+    const loadError = categoryQuery.error;
+    const saving = createCategory.isPending || updateCategory.isPending;
 
-    useEffect(() => {
-        load();
-    }, [load]);
+    const retry = categoryQuery.refetch;
 
     const openCreate = () => {
         setEditing(null);
@@ -90,29 +79,23 @@ const CategoriesScreen = ({ navigation }) => {
             return;
         }
 
-        setSaving(true);
+        // The mutations invalidate the categories query, so the list re-reads
+        // itself rather than each branch patching local state by hand.
         try {
             if (editing) {
-                const res = await categoryService.update(editing.id, {
+                await updateCategory.mutateAsync({
+                    id: editing.id,
                     name: name.trim(),
                     color,
                 });
-                setCategories((prev) =>
-                    prev.map((c) => (c.id === editing.id ? res.data : c))
-                );
                 notify({ message: 'Category updated' });
             } else {
-                const res = await categoryService.create({ name: name.trim(), color });
-                setCategories((prev) =>
-                    [...prev, res.data].sort((a, b) => a.name.localeCompare(b.name))
-                );
-                notify({ message: `“${res.data.name}” created` });
+                const created = await createCategory.mutateAsync({ name: name.trim(), color });
+                notify({ message: `“${created.name}” created` });
             }
             setEditorOpen(false);
         } catch (err) {
             setError(errorMessage(err));
-        } finally {
-            setSaving(false);
         }
     };
 
@@ -132,8 +115,7 @@ const CategoriesScreen = ({ navigation }) => {
         // categories that still have expenses, and that 409 needs to be shown
         // straight away rather than five seconds later.
         try {
-            await categoryService.delete(category.id);
-            setCategories((prev) => prev.filter((c) => c.id !== category.id));
+            await deleteCategory.mutateAsync(category.id);
             notify({ message: 'Category deleted' });
         } catch (err) {
             // A 409 is the API refusing to orphan expenses. Anything else —

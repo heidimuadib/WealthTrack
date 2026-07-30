@@ -8,7 +8,6 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
 import { CalendarDays, Trash2 } from 'lucide-react-native';
 
 import Input from '../components/Input';
@@ -19,9 +18,15 @@ import DatePickerModal from '../components/DatePickerModal';
 import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
 import { colors, radius, spacing } from '../theme';
-import { expenseService, categoryService } from '../services/api';
+import { useCategories } from '../hooks/useCategories';
+import { useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { formatCurrency, formatDate } from '../utils/format';
-import { errorMessage, isHandledGlobally } from '../utils/error';
+import { errorMessage } from '../utils/error';
+
+// Stable reference for the not-yet-loaded case, so the effect that auto-picks
+// a category is not re-run by a fresh [] on every render.
+const NO_CATEGORIES = [];
 
 // Serves both the "Add" tab and the "EditExpense" stack route — the only
 // difference is whether an existing expense arrived in the route params.
@@ -31,18 +36,27 @@ const AddExpenseScreen = ({ navigation, route }) => {
     const [amount, setAmount] = useState('');
     const [notes, setNotes] = useState('');
     const [date, setDate] = useState(new Date());
-    const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [showPicker, setShowPicker] = useState(false);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const { confirm, notify } = useFeedback();
+
+    // Shared with every other screen that needs them, so arriving here no
+    // longer costs a request when the list was already fetched.
+    const categoryQuery = useCategories();
+    useRefreshOnFocus(categoryQuery);
+
+    const createExpense = useCreateExpense();
+    const updateExpense = useUpdateExpense();
+    const deleteExpense = useDeleteExpense();
+
+    const categories = categoryQuery.data ?? NO_CATEGORIES;
     // Separate from `error`, which reports a failed save. This one reports a
     // failed category load: without it the picker just sat empty and the only
     // clue was "Pick a category" appearing after the user tried to submit.
-    const [categoryError, setCategoryError] = useState(null);
-
-    const isFocused = useIsFocused();
-    const { confirm, notify } = useFeedback();
+    const categoryError = categoryQuery.error;
+    const loading = createExpense.isPending || updateExpense.isPending;
 
     const resetForm = useCallback(() => {
         if (editing) {
@@ -58,28 +72,12 @@ const AddExpenseScreen = ({ navigation, route }) => {
         setError('');
     }, [editing]);
 
-    const loadCategories = useCallback(async () => {
-        try {
-            const res = await categoryService.getAll();
-            setCategories(res.data);
-            setCategoryError(null);
-
-            // Only auto-pick when adding; editing already has its category.
-            if (!editing && res.data.length > 0) {
-                setSelectedCategory((current) => current ?? res.data[0].id);
-            }
-        } catch (err) {
-            if (!isHandledGlobally(err)) {
-                setCategoryError(err);
-            }
-        }
-    }, [editing]);
-
+    // Only auto-pick when adding; editing already has its category.
     useEffect(() => {
-        if (isFocused) {
-            loadCategories();
+        if (!editing && categories.length > 0) {
+            setSelectedCategory((current) => current ?? categories[0].id);
         }
-    }, [isFocused, loadCategories]);
+    }, [editing, categories]);
 
     useEffect(() => {
         resetForm();
@@ -98,7 +96,6 @@ const AddExpenseScreen = ({ navigation, route }) => {
         }
 
         setError('');
-        setLoading(true);
 
         const payload = {
             amount: parsed,
@@ -109,11 +106,11 @@ const AddExpenseScreen = ({ navigation, route }) => {
 
         try {
             if (editing) {
-                await expenseService.update(editing.id, payload);
+                await updateExpense.mutateAsync({ id: editing.id, ...payload });
                 navigation.goBack();
                 notify({ message: 'Changes saved' });
             } else {
-                await expenseService.create(payload);
+                await createExpense.mutateAsync(payload);
                 setAmount('');
                 setNotes('');
                 setDate(new Date());
@@ -122,8 +119,6 @@ const AddExpenseScreen = ({ navigation, route }) => {
             }
         } catch (err) {
             setError(errorMessage(err));
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -143,7 +138,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
         // on success, so an undo window would leave the list showing a row
         // that is about to vanish. Undo lives on the Expenses list instead.
         try {
-            await expenseService.delete(editing.id);
+            await deleteExpense.mutateAsync(editing.id);
             navigation.goBack();
             notify({ message: 'Expense deleted' });
         } catch (err) {
@@ -190,7 +185,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
                 {categoryError ? (
                     <ErrorBanner
                         error={categoryError}
-                        onRetry={loadCategories}
+                        onRetry={categoryQuery.refetch}
                         style={styles.categoryError}
                     />
                 ) : null}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -9,7 +9,6 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { useIsFocused } from '@react-navigation/native';
 import { PieChart, Receipt, TrendingUp } from 'lucide-react-native';
 
 import Card from '../components/Card';
@@ -19,7 +18,6 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import ProgressBar from '../components/ProgressBar';
-import { isHandledGlobally } from '../utils/error';
 import {
     balanceGradient,
     categoryPalette,
@@ -30,7 +28,9 @@ import {
     spacing,
     typography,
 } from '../theme';
-import { expenseService, budgetService } from '../services/api';
+import { useExpenses } from '../hooks/useExpenses';
+import { useBudget } from '../hooks/useBudget';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import useAuthStore from '../store/authStore';
 import {
     currentMonthYear,
@@ -39,65 +39,43 @@ import {
     formatCompact,
 } from '../utils/format';
 
+// A stable reference for the not-yet-loaded case. A fresh [] on every render
+// would change the identity the memos below depend on, so they would recompute
+// every time regardless.
+const NO_EXPENSES = [];
+
 const HomeScreen = ({ navigation }) => {
     const [period, setPeriod] = useState(currentMonthYear);
-    const [expenses, setExpenses] = useState([]);
-    const [budget, setBudget] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState(null);
-    // Whether a request has ever succeeded for this screen. A failure with
-    // nothing on screen has to take the screen over; a failure on top of
-    // figures already shown should leave them be.
-    const [loaded, setLoaded] = useState(false);
 
     const user = useAuthStore((state) => state.user);
-    const isFocused = useIsFocused();
 
-    const fetchData = useCallback(async () => {
-        try {
-            const [expenseRes, budgetRes] = await Promise.all([
-                expenseService.getAll(period),
-                budgetService.get(period.month, period.year),
-            ]);
-            setExpenses(expenseRes.data);
-            setBudget(budgetRes.data?.amount || 0);
-            setError(null);
-            setLoaded(true);
-        } catch (err) {
-            // A 401 clears the session and navigates away on its own, so
-            // surfacing it here would only flash a message on the way out.
-            if (!isHandledGlobally(err)) {
-                setError(err);
-            }
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [period]);
+    // Each month is its own cache entry, so switching months can never show
+    // one month's figures under another's heading — the previous month's data
+    // simply is not part of this query.
+    const expenseQuery = useExpenses(period);
+    const budgetQuery = useBudget(period);
 
-    // Switching months invalidates what is on screen. Holding the previous
-    // month's figures while the new one loads would attribute them to the
-    // wrong month if that request then failed.
-    useEffect(() => {
-        setLoaded(false);
-    }, [period]);
+    useRefreshOnFocus(expenseQuery);
+    useRefreshOnFocus(budgetQuery);
 
-    useEffect(() => {
-        if (isFocused) {
-            fetchData();
-        }
-    }, [isFocused, fetchData]);
+    const expenses = expenseQuery.data ?? NO_EXPENSES;
+    const budget = budgetQuery.data ?? 0;
 
-    const onRefresh = () => {
-        setRefreshing(true);
-        fetchData();
-    };
+    // A 401 clears the session and navigates away on its own, and the query
+    // client is told not to retry it, so it never surfaces here.
+    const error = expenseQuery.error || budgetQuery.error;
+    // Pending means nothing is cached yet. A refetch over existing data is not
+    // pending, which is what removes the spinner flash on every tab switch.
+    const loading = expenseQuery.isPending || budgetQuery.isPending;
+    const hasData = expenseQuery.data !== undefined && budgetQuery.data !== undefined;
+    const refreshing = expenseQuery.isRefetching || budgetQuery.isRefetching;
 
     const retry = useCallback(() => {
-        setLoading(true);
-        fetchData();
-    }, [fetchData]);
+        expenseQuery.refetch();
+        budgetQuery.refetch();
+    }, [expenseQuery, budgetQuery]);
+
+    const onRefresh = retry;
 
     const totalSpent = useMemo(
         () => expenses.reduce((sum, item) => sum + item.amount, 0),
@@ -148,7 +126,7 @@ const HomeScreen = ({ navigation }) => {
     // Nothing ever loaded, so there are no figures to fall through to. The
     // empty state would claim ₱0 spent, which is a different — and wrong —
     // statement about the month.
-    if (error && !loaded) {
+    if (error && !hasData) {
         return (
             <View style={styles.errorScreen}>
                 <ErrorState error={error} onRetry={retry} />

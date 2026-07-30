@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Receipt, Search, X } from 'lucide-react-native';
 
 import Input from '../components/Input';
@@ -18,68 +18,50 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
-import { errorMessage, isHandledGlobally } from '../utils/error';
+import { errorMessage } from '../utils/error';
 import { colors, radius, spacing, typography } from '../theme';
-import { expenseService } from '../services/api';
+import { useExpenses, useDeleteExpense } from '../hooks/useExpenses';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
+import { queryKeys } from '../lib/queryKeys';
 import { currentMonthYear, formatCurrency, formatDayLabel } from '../utils/format';
+
+// Stable reference for the not-yet-loaded case, so the memos below are not
+// invalidated by a fresh [] on every render.
+const NO_EXPENSES = [];
 
 const ExpensesScreen = ({ navigation }) => {
     const [period, setPeriod] = useState(currentMonthYear);
-    const [expenses, setExpenses] = useState([]);
     const [query, setQuery] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState(null);
-    // See HomeScreen: distinguishes "never loaded" from "loaded, then a
-    // refresh failed", which decides whether the failure takes the screen.
-    const [loaded, setLoaded] = useState(false);
 
-    const isFocused = useIsFocused();
+    const queryClient = useQueryClient();
+    const expenseQuery = useExpenses(period);
+    const deleteExpense = useDeleteExpense();
+
+    useRefreshOnFocus(expenseQuery);
+
     const { confirm, notify } = useFeedback();
 
-    const fetchExpenses = useCallback(async () => {
-        try {
-            const res = await expenseService.getAll(period);
-            setExpenses(res.data);
-            setError(null);
-            setLoaded(true);
-        } catch (err) {
-            if (!isHandledGlobally(err)) {
-                setError(err);
-            }
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [period]);
+    const expenses = expenseQuery.data ?? NO_EXPENSES;
+    const error = expenseQuery.error;
+    const loading = expenseQuery.isPending;
+    const hasData = expenseQuery.data !== undefined;
+    const refreshing = expenseQuery.isRefetching;
 
-    // Switching months invalidates what is on screen. Holding the previous
-    // month's rows while the new one loads would attribute them to the wrong
-    // month if that request then failed.
-    useEffect(() => {
-        setLoaded(false);
-    }, [period]);
+    const retry = useCallback(() => expenseQuery.refetch(), [expenseQuery]);
 
-    useEffect(() => {
-        if (isFocused) {
-            fetchExpenses();
-        }
-    }, [isFocused, fetchExpenses]);
+    // The row has to leave the list before the request is sent, so Undo can
+    // cancel it outright. Editing the cache rather than local state keeps the
+    // list a single source of truth. Newest-first matches the API's order.
+    const monthKey = queryKeys.expenses.month(period);
 
-    const onRefresh = () => {
-        setRefreshing(true);
-        fetchExpenses();
-    };
+    const removeFromCache = (id) =>
+        queryClient.setQueryData(monthKey, (current = []) =>
+            current.filter((e) => e.id !== id)
+        );
 
-    const retry = useCallback(() => {
-        setLoading(true);
-        fetchExpenses();
-    }, [fetchExpenses]);
-
-    // Newest-first, matching the order the API returns.
-    const restore = (expense) =>
-        setExpenses((prev) =>
-            [...prev, expense].sort((a, b) => new Date(b.date) - new Date(a.date))
+    const restoreToCache = (expense) =>
+        queryClient.setQueryData(monthKey, (current = []) =>
+            [...current, expense].sort((a, b) => new Date(b.date) - new Date(a.date))
         );
 
     const handleDelete = async (expense) => {
@@ -96,21 +78,21 @@ const ExpensesScreen = ({ navigation }) => {
             return;
         }
 
-        // Vanish from the list immediately, but hold the API call back so Undo
-        // can cancel it outright. If the app dies first, nothing was deleted.
-        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+        // Held back until the snackbar expires. If the app dies first, nothing
+        // was deleted.
+        removeFromCache(expense.id);
 
         notify({
             message: 'Expense deleted',
             actionLabel: 'UNDO',
-            onAction: () => restore(expense),
+            onAction: () => restoreToCache(expense),
             onTimeout: async () => {
                 try {
-                    await expenseService.delete(expense.id);
+                    await deleteExpense.mutateAsync(expense.id);
                 } catch (err) {
                     // The row reappearing on its own looks like a bug unless
                     // the reason lands with it.
-                    restore(expense);
+                    restoreToCache(expense);
                     notify({ message: `Couldn’t delete — ${errorMessage(err)}` });
                 }
             },
@@ -212,7 +194,7 @@ const ExpensesScreen = ({ navigation }) => {
 
             {loading ? (
                 <ActivityIndicator color={colors.brand} style={styles.loading} />
-            ) : error && !loaded ? (
+            ) : error && !hasData ? (
                 // An empty list here would read as "you spent nothing this
                 // month" when the truth is that nothing could be fetched.
                 <ErrorState error={error} onRetry={retry} />
@@ -244,7 +226,7 @@ const ExpensesScreen = ({ navigation }) => {
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
-                            onRefresh={onRefresh}
+                            onRefresh={retry}
                             tintColor={colors.brand}
                             colors={[colors.brand]}
                         />

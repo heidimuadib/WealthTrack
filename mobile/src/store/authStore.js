@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queryClient } from '../lib/queryClient';
 
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
@@ -30,6 +31,10 @@ const useAuthStore = create((set) => ({
 
     logout: async () => {
         set({ user: null, token: null, isAuthenticated: false, isRestoring: false });
+        // Cached expenses and budgets belong to the account that just left.
+        // Without this the next person to sign in on this device would be
+        // shown the previous one's figures until each query refetched.
+        queryClient.clear();
         try {
             await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
         } catch (error) {

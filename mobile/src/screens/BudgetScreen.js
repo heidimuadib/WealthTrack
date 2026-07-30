@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,6 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { useIsFocused } from '@react-navigation/native';
 import { CalendarClock } from 'lucide-react-native';
 
 import Input from '../components/Input';
@@ -22,7 +21,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
-import { errorMessage, isHandledGlobally } from '../utils/error';
+import { errorMessage } from '../utils/error';
 import {
     balanceGradient,
     dangerGradient,
@@ -33,67 +32,55 @@ import {
     spacing,
     typography,
 } from '../theme';
-import { budgetService, expenseService } from '../services/api';
+import { useExpenses } from '../hooks/useExpenses';
+import { useBudget, useSetBudget } from '../hooks/useBudget';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { currentMonthYear, formatCurrency, formatCompact } from '../utils/format';
 
 const BudgetScreen = () => {
     const [period, setPeriod] = useState(currentMonthYear);
-    const [budget, setBudget] = useState(0);
-    const [spent, setSpent] = useState(0);
     const [draft, setDraft] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-    // This screen used to render straight away with budget and spent both at
-    // zero, so a failed load was indistinguishable from a month with no
-    // budget set — it confidently showed "₱0 remaining".
-    const [fetching, setFetching] = useState(true);
-    const [error, setError] = useState(null);
-    const [loaded, setLoaded] = useState(false);
 
-    const isFocused = useIsFocused();
     const { alert, notify } = useFeedback();
 
-    const fetchData = useCallback(async () => {
-        try {
-            const [budgetRes, expenseRes] = await Promise.all([
-                budgetService.get(period.month, period.year),
-                expenseService.getAll(period),
-            ]);
+    const budgetQuery = useBudget(period);
+    const expenseQuery = useExpenses(period);
+    const setBudgetMutation = useSetBudget();
 
-            const amount = budgetRes.data?.amount || 0;
-            setBudget(amount);
-            setDraft(amount ? String(amount) : '');
-            setSpent(expenseRes.data.reduce((sum, item) => sum + item.amount, 0));
-            setError(null);
-            setLoaded(true);
-        } catch (err) {
-            if (!isHandledGlobally(err)) {
-                setError(err);
-            }
-        } finally {
-            setFetching(false);
-            setRefreshing(false);
-        }
-    }, [period]);
+    useRefreshOnFocus(budgetQuery);
+    useRefreshOnFocus(expenseQuery);
 
-    // Switching months invalidates what is on screen. Holding the previous
-    // month's figures while the new one loads would attribute them to the
-    // wrong month if that request then failed.
-    useEffect(() => {
-        setFetching(true);
-        setLoaded(false);
-    }, [period]);
+    const budget = budgetQuery.data ?? 0;
+    const spent = useMemo(
+        () => (expenseQuery.data ?? []).reduce((sum, item) => sum + item.amount, 0),
+        [expenseQuery.data]
+    );
 
-    useEffect(() => {
-        if (isFocused) {
-            fetchData();
-        }
-    }, [isFocused, fetchData]);
+    // This screen used to render straight away with budget and spent both at
+    // zero, so a failed load was indistinguishable from a month with no budget
+    // set — it confidently showed "₱0 remaining".
+    const error = budgetQuery.error || expenseQuery.error;
+    const fetching = budgetQuery.isPending || expenseQuery.isPending;
+    const hasData = budgetQuery.data !== undefined && expenseQuery.data !== undefined;
+    const refreshing = budgetQuery.isRefetching || expenseQuery.isRefetching;
+    const loading = setBudgetMutation.isPending;
 
     const retry = useCallback(() => {
-        setFetching(true);
-        fetchData();
-    }, [fetchData]);
+        budgetQuery.refetch();
+        expenseQuery.refetch();
+    }, [budgetQuery, expenseQuery]);
+
+    // Seeds the input from the stored budget once per month. Keyed on the
+    // month rather than the value so a background refetch cannot overwrite an
+    // amount the user is midway through typing.
+    const seededFor = useRef(null);
+    useEffect(() => {
+        const stamp = `${period.year}-${period.month}`;
+        if (budgetQuery.data !== undefined && seededFor.current !== stamp) {
+            seededFor.current = stamp;
+            setDraft(budgetQuery.data ? String(budgetQuery.data) : '');
+        }
+    }, [budgetQuery.data, period]);
 
     const handleSave = async () => {
         const parsed = parseFloat(draft);
@@ -106,22 +93,18 @@ const BudgetScreen = () => {
             return;
         }
 
-        setLoading(true);
         try {
-            await budgetService.set({
+            await setBudgetMutation.mutateAsync({
                 amount: parsed,
                 month: period.month,
                 year: period.year,
             });
-            setBudget(parsed);
             // A snackbar rather than a dialog — success shouldn't need a tap.
             notify({ message: `Budget set to ${formatCurrency(parsed)}` });
         } catch (err) {
-            // The API now returns a message naming the offending field, which
-            // is more use than a blanket "please try again".
+            // The API returns a message naming the offending field, which is
+            // more use than a blanket "please try again".
             alert({ title: 'Could not save', message: errorMessage(err) });
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -152,9 +135,9 @@ const BudgetScreen = () => {
         >
             <ScreenHeader title="Budget" subtitle="Monthly limit" />
 
-            {fetching && !loaded ? (
+            {fetching && !hasData ? (
                 <ActivityIndicator color={colors.brand} style={styles.loading} />
-            ) : error && !loaded ? (
+            ) : error && !hasData ? (
                 <View style={styles.errorScreen}>
                     <ErrorState error={error} onRetry={retry} />
                 </View>
@@ -166,10 +149,7 @@ const BudgetScreen = () => {
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
-                        onRefresh={() => {
-                            setRefreshing(true);
-                            fetchData();
-                        }}
+                        onRefresh={retry}
                         tintColor={colors.brand}
                         colors={[colors.brand]}
                     />
