@@ -2,11 +2,34 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const getBudget = async (req, res) => {
-    const { month, year } = req.query;
+// A budget is addressed by (month, year), so both have to be real before they
+// reach the compound unique key — parseInt('abc') yields NaN, which Prisma
+// rejects with a 500 that tells the client nothing.
+const parsePeriod = (month, year) => {
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
 
-    if (!month || !year) {
-        return res.status(400).json({ error: 'Month and year are required' });
+    if (!Number.isInteger(m) || m < 1 || m > 12) {
+        return { error: 'Month must be a number from 1 to 12' };
+    }
+    // Bounded so a typo cannot write a row that no month view will ever show.
+    if (!Number.isInteger(y) || y < 2000 || y > 2100) {
+        return { error: 'Year must be a number between 2000 and 2100' };
+    }
+
+    return { month: m, year: y };
+};
+
+// Zero is allowed — it is how a budget gets cleared.
+const parseAmount = (value) => {
+    const amount = parseFloat(value);
+    return Number.isFinite(amount) && amount >= 0 ? amount : null;
+};
+
+const getBudget = async (req, res) => {
+    const period = parsePeriod(req.query.month, req.query.year);
+    if (period.error) {
+        return res.status(400).json({ error: period.error });
     }
 
     try {
@@ -14,8 +37,8 @@ const getBudget = async (req, res) => {
             where: {
                 userId_month_year: {
                     userId: req.user.id,
-                    month: parseInt(month),
-                    year: parseInt(year),
+                    month: period.month,
+                    year: period.year,
                 },
             },
         });
@@ -26,23 +49,31 @@ const getBudget = async (req, res) => {
 };
 
 const setBudget = async (req, res) => {
-    const { amount, month, year } = req.body;
+    const period = parsePeriod(req.body.month, req.body.year);
+    if (period.error) {
+        return res.status(400).json({ error: period.error });
+    }
+
+    const amount = parseAmount(req.body.amount);
+    if (amount === null) {
+        return res.status(400).json({ error: 'Amount must be a number of zero or more' });
+    }
 
     try {
         const budget = await prisma.budget.upsert({
             where: {
                 userId_month_year: {
                     userId: req.user.id,
-                    month: parseInt(month),
-                    year: parseInt(year),
+                    month: period.month,
+                    year: period.year,
                 },
             },
-            update: { amount: parseFloat(amount) },
+            update: { amount },
             create: {
                 userId: req.user.id,
-                month: parseInt(month),
-                year: parseInt(year),
-                amount: parseFloat(amount),
+                month: period.month,
+                year: period.year,
+                amount,
             },
         });
         res.json(budget);
