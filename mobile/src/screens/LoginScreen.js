@@ -14,6 +14,7 @@ import Button from '../components/Button';
 import { colors, radius, spacing, typography, shadows } from '../theme';
 import { authService } from '../services/api';
 import useAuthStore from '../store/authStore';
+import { errorMessage } from '../utils/error';
 
 const LoginScreen = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -52,7 +53,9 @@ const LoginScreen = () => {
             const { user, token } = res.data;
             login(user, token);
         } catch (err) {
-            setError(err.response?.data?.error || 'Something went wrong. Please try again.');
+            // Distinguishes wrong password from an unreachable server, which
+            // previously both read as "Something went wrong".
+            setError(errorMessage(err));
         } finally {
             setLoading(false);
         }

@@ -15,8 +15,11 @@ import { PieChart, Receipt, TrendingUp } from 'lucide-react-native';
 import Card from '../components/Card';
 import DonutChart from '../components/DonutChart';
 import EmptyState from '../components/EmptyState';
+import ErrorState from '../components/ErrorState';
+import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import ProgressBar from '../components/ProgressBar';
+import { isHandledGlobally } from '../utils/error';
 import {
     balanceGradient,
     categoryPalette,
@@ -42,6 +45,11 @@ const HomeScreen = ({ navigation }) => {
     const [budget, setBudget] = useState(0);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(null);
+    // Whether a request has ever succeeded for this screen. A failure with
+    // nothing on screen has to take the screen over; a failure on top of
+    // figures already shown should leave them be.
+    const [loaded, setLoaded] = useState(false);
 
     const user = useAuthStore((state) => state.user);
     const isFocused = useIsFocused();
@@ -54,13 +62,25 @@ const HomeScreen = ({ navigation }) => {
             ]);
             setExpenses(expenseRes.data);
             setBudget(budgetRes.data?.amount || 0);
-        } catch (error) {
-            // A 401 is already handled globally by the response interceptor.
-            console.warn('Failed to load dashboard', error?.message);
+            setError(null);
+            setLoaded(true);
+        } catch (err) {
+            // A 401 clears the session and navigates away on its own, so
+            // surfacing it here would only flash a message on the way out.
+            if (!isHandledGlobally(err)) {
+                setError(err);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
+    }, [period]);
+
+    // Switching months invalidates what is on screen. Holding the previous
+    // month's figures while the new one loads would attribute them to the
+    // wrong month if that request then failed.
+    useEffect(() => {
+        setLoaded(false);
     }, [period]);
 
     useEffect(() => {
@@ -73,6 +93,11 @@ const HomeScreen = ({ navigation }) => {
         setRefreshing(true);
         fetchData();
     };
+
+    const retry = useCallback(() => {
+        setLoading(true);
+        fetchData();
+    }, [fetchData]);
 
     const totalSpent = useMemo(
         () => expenses.reduce((sum, item) => sum + item.amount, 0),
@@ -120,6 +145,17 @@ const HomeScreen = ({ navigation }) => {
         );
     }
 
+    // Nothing ever loaded, so there are no figures to fall through to. The
+    // empty state would claim ₱0 spent, which is a different — and wrong —
+    // statement about the month.
+    if (error && !loaded) {
+        return (
+            <View style={styles.errorScreen}>
+                <ErrorState error={error} onRetry={retry} />
+            </View>
+        );
+    }
+
     return (
         <ScrollView
             style={styles.container}
@@ -157,6 +193,11 @@ const HomeScreen = ({ navigation }) => {
             <View style={styles.monthRow}>
                 <MonthSelector value={period} onChange={setPeriod} />
             </View>
+
+            {/* Figures below are from the last successful load. */}
+            {error ? (
+                <ErrorBanner error={error} onRetry={retry} style={styles.banner} />
+            ) : null}
 
             {/* The single gradient in the app, reserved for the headline figure. */}
             <LinearGradient
@@ -301,6 +342,14 @@ const styles = StyleSheet.create({
         backgroundColor: colors.canvas,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    errorScreen: {
+        flex: 1,
+        backgroundColor: colors.canvas,
+        justifyContent: 'center',
+    },
+    banner: {
+        marginBottom: spacing.l,
     },
     content: {
         padding: spacing.l,

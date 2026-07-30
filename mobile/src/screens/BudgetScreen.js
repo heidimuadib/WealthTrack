@@ -7,6 +7,7 @@ import {
     RefreshControl,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useIsFocused } from '@react-navigation/native';
@@ -18,7 +19,10 @@ import Card from '../components/Card';
 import ProgressBar from '../components/ProgressBar';
 import MonthSelector from '../components/MonthSelector';
 import ScreenHeader from '../components/ScreenHeader';
+import ErrorState from '../components/ErrorState';
+import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
+import { errorMessage, isHandledGlobally } from '../utils/error';
 import {
     balanceGradient,
     dangerGradient,
@@ -39,6 +43,12 @@ const BudgetScreen = () => {
     const [draft, setDraft] = useState('');
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    // This screen used to render straight away with budget and spent both at
+    // zero, so a failed load was indistinguishable from a month with no
+    // budget set — it confidently showed "₱0 remaining".
+    const [fetching, setFetching] = useState(true);
+    const [error, setError] = useState(null);
+    const [loaded, setLoaded] = useState(false);
 
     const isFocused = useIsFocused();
     const { alert, notify } = useFeedback();
@@ -54,11 +64,24 @@ const BudgetScreen = () => {
             setBudget(amount);
             setDraft(amount ? String(amount) : '');
             setSpent(expenseRes.data.reduce((sum, item) => sum + item.amount, 0));
-        } catch (error) {
-            console.warn('Failed to load budget', error?.message);
+            setError(null);
+            setLoaded(true);
+        } catch (err) {
+            if (!isHandledGlobally(err)) {
+                setError(err);
+            }
         } finally {
+            setFetching(false);
             setRefreshing(false);
         }
+    }, [period]);
+
+    // Switching months invalidates what is on screen. Holding the previous
+    // month's figures while the new one loads would attribute them to the
+    // wrong month if that request then failed.
+    useEffect(() => {
+        setFetching(true);
+        setLoaded(false);
     }, [period]);
 
     useEffect(() => {
@@ -66,6 +89,11 @@ const BudgetScreen = () => {
             fetchData();
         }
     }, [isFocused, fetchData]);
+
+    const retry = useCallback(() => {
+        setFetching(true);
+        fetchData();
+    }, [fetchData]);
 
     const handleSave = async () => {
         const parsed = parseFloat(draft);
@@ -88,8 +116,10 @@ const BudgetScreen = () => {
             setBudget(parsed);
             // A snackbar rather than a dialog — success shouldn't need a tap.
             notify({ message: `Budget set to ${formatCurrency(parsed)}` });
-        } catch (error) {
-            alert({ title: 'Could not save', message: 'Please try again.' });
+        } catch (err) {
+            // The API now returns a message naming the offending field, which
+            // is more use than a blanket "please try again".
+            alert({ title: 'Could not save', message: errorMessage(err) });
         } finally {
             setLoading(false);
         }
@@ -122,6 +152,13 @@ const BudgetScreen = () => {
         >
             <ScreenHeader title="Budget" subtitle="Monthly limit" />
 
+            {fetching && !loaded ? (
+                <ActivityIndicator color={colors.brand} style={styles.loading} />
+            ) : error && !loaded ? (
+                <View style={styles.errorScreen}>
+                    <ErrorState error={error} onRetry={retry} />
+                </View>
+            ) : (
             <ScrollView
                 contentContainerStyle={styles.content}
                 keyboardShouldPersistTaps="handled"
@@ -139,6 +176,10 @@ const BudgetScreen = () => {
                 }
             >
                 <MonthSelector value={period} onChange={setPeriod} />
+
+                {error ? (
+                    <ErrorBanner error={error} onRetry={retry} style={styles.banner} />
+                ) : null}
 
                 <LinearGradient
                     colors={isOver ? dangerGradient : balanceGradient}
@@ -198,6 +239,7 @@ const BudgetScreen = () => {
                     </Text>
                 </Card>
             </ScrollView>
+            )}
         </KeyboardAvoidingView>
     );
 };
@@ -210,6 +252,16 @@ const styles = StyleSheet.create({
     content: {
         padding: spacing.l,
         paddingBottom: spacing.xxxl,
+    },
+    loading: {
+        marginTop: spacing.xxl,
+    },
+    errorScreen: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    banner: {
+        marginTop: spacing.l,
     },
     statusCard: {
         borderRadius: radius.xl,

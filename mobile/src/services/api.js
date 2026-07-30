@@ -4,6 +4,10 @@ import { API_URL } from '../config/api.config';
 
 const api = axios.create({
     baseURL: API_URL,
+    // Without a ceiling, a request to an unreachable host hangs until the OS
+    // gives up — minutes of spinner rather than an error the user can act on.
+    // This is the exact failure the adb reverse tunnel produces when it drops.
+    timeout: 15000,
     headers: {
         'Content-Type': 'application/json',
     },

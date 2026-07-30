@@ -14,8 +14,11 @@ import { Receipt, Search, X } from 'lucide-react-native';
 import Input from '../components/Input';
 import MonthSelector from '../components/MonthSelector';
 import EmptyState from '../components/EmptyState';
+import ErrorState from '../components/ErrorState';
+import ErrorBanner from '../components/ErrorBanner';
 import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
+import { errorMessage, isHandledGlobally } from '../utils/error';
 import { colors, radius, spacing, typography } from '../theme';
 import { expenseService } from '../services/api';
 import { currentMonthYear, formatCurrency, formatDayLabel } from '../utils/format';
@@ -26,6 +29,10 @@ const ExpensesScreen = ({ navigation }) => {
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(null);
+    // See HomeScreen: distinguishes "never loaded" from "loaded, then a
+    // refresh failed", which decides whether the failure takes the screen.
+    const [loaded, setLoaded] = useState(false);
 
     const isFocused = useIsFocused();
     const { confirm, notify } = useFeedback();
@@ -34,12 +41,23 @@ const ExpensesScreen = ({ navigation }) => {
         try {
             const res = await expenseService.getAll(period);
             setExpenses(res.data);
-        } catch (error) {
-            console.warn('Failed to load expenses', error?.message);
+            setError(null);
+            setLoaded(true);
+        } catch (err) {
+            if (!isHandledGlobally(err)) {
+                setError(err);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
+    }, [period]);
+
+    // Switching months invalidates what is on screen. Holding the previous
+    // month's rows while the new one loads would attribute them to the wrong
+    // month if that request then failed.
+    useEffect(() => {
+        setLoaded(false);
     }, [period]);
 
     useEffect(() => {
@@ -52,6 +70,11 @@ const ExpensesScreen = ({ navigation }) => {
         setRefreshing(true);
         fetchExpenses();
     };
+
+    const retry = useCallback(() => {
+        setLoading(true);
+        fetchExpenses();
+    }, [fetchExpenses]);
 
     // Newest-first, matching the order the API returns.
     const restore = (expense) =>
@@ -84,8 +107,11 @@ const ExpensesScreen = ({ navigation }) => {
             onTimeout: async () => {
                 try {
                     await expenseService.delete(expense.id);
-                } catch (error) {
+                } catch (err) {
+                    // The row reappearing on its own looks like a bug unless
+                    // the reason lands with it.
                     restore(expense);
+                    notify({ message: `Couldn’t delete — ${errorMessage(err)}` });
                 }
             },
         });
@@ -186,11 +212,24 @@ const ExpensesScreen = ({ navigation }) => {
 
             {loading ? (
                 <ActivityIndicator color={colors.brand} style={styles.loading} />
+            ) : error && !loaded ? (
+                // An empty list here would read as "you spent nothing this
+                // month" when the truth is that nothing could be fetched.
+                <ErrorState error={error} onRetry={retry} />
             ) : (
                 <SectionList
                     sections={sections}
                     keyExtractor={(item) => String(item.id)}
                     renderItem={renderItem}
+                    ListHeaderComponent={
+                        error ? (
+                            <ErrorBanner
+                                error={error}
+                                onRetry={retry}
+                                style={styles.banner}
+                            />
+                        ) : null
+                    }
                     renderSectionHeader={({ section }) => (
                         <View style={styles.sectionHeaderRow}>
                             <Text style={styles.sectionHeader}>{section.title}</Text>
@@ -264,6 +303,9 @@ const styles = StyleSheet.create({
     },
     loading: {
         marginTop: spacing.xxl,
+    },
+    banner: {
+        marginBottom: spacing.l,
     },
     list: {
         padding: spacing.l,

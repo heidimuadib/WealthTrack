@@ -16,10 +16,12 @@ import Button from '../components/Button';
 import ScreenHeader from '../components/ScreenHeader';
 import CategorySelect from '../components/CategorySelect';
 import DatePickerModal from '../components/DatePickerModal';
+import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
 import { colors, radius, spacing } from '../theme';
 import { expenseService, categoryService } from '../services/api';
 import { formatCurrency, formatDate } from '../utils/format';
+import { errorMessage, isHandledGlobally } from '../utils/error';
 
 // Serves both the "Add" tab and the "EditExpense" stack route — the only
 // difference is whether an existing expense arrived in the route params.
@@ -34,6 +36,10 @@ const AddExpenseScreen = ({ navigation, route }) => {
     const [showPicker, setShowPicker] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    // Separate from `error`, which reports a failed save. This one reports a
+    // failed category load: without it the picker just sat empty and the only
+    // clue was "Pick a category" appearing after the user tried to submit.
+    const [categoryError, setCategoryError] = useState(null);
 
     const isFocused = useIsFocused();
     const { confirm, notify } = useFeedback();
@@ -56,13 +62,16 @@ const AddExpenseScreen = ({ navigation, route }) => {
         try {
             const res = await categoryService.getAll();
             setCategories(res.data);
+            setCategoryError(null);
 
             // Only auto-pick when adding; editing already has its category.
             if (!editing && res.data.length > 0) {
                 setSelectedCategory((current) => current ?? res.data[0].id);
             }
         } catch (err) {
-            console.warn('Failed to load categories', err?.message);
+            if (!isHandledGlobally(err)) {
+                setCategoryError(err);
+            }
         }
     }, [editing]);
 
@@ -112,7 +121,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
                 notify({ message: `${formatCurrency(parsed)} added` });
             }
         } catch (err) {
-            setError(err.response?.data?.error || 'Could not save. Please try again.');
+            setError(errorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -138,7 +147,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
             navigation.goBack();
             notify({ message: 'Expense deleted' });
         } catch (err) {
-            setError('Could not delete. Please try again.');
+            setError(errorMessage(err));
         }
     };
 
@@ -177,6 +186,14 @@ const AddExpenseScreen = ({ navigation, route }) => {
                     <Text style={styles.dateText}>{formatDate(date)}</Text>
                     <Text style={styles.dateChange}>Change</Text>
                 </TouchableOpacity>
+
+                {categoryError ? (
+                    <ErrorBanner
+                        error={categoryError}
+                        onRetry={loadCategories}
+                        style={styles.categoryError}
+                    />
+                ) : null}
 
                 <CategorySelect
                     categories={categories}
@@ -265,6 +282,9 @@ const styles = StyleSheet.create({
     },
     notes: {
         marginTop: spacing.xs,
+    },
+    categoryError: {
+        marginBottom: spacing.l,
     },
     errorBox: {
         backgroundColor: colors.dangerTint,
