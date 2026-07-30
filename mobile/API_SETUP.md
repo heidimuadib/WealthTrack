@@ -1,69 +1,59 @@
 # API Configuration Guide
 
-## Overview
-The app now uses **dynamic API URL detection** instead of hardcoded values. This makes it easier to switch between development environments.
+How the app decides which backend URL to talk to, and what to change when it
+cannot reach one. The logic lives in `src/config/api.config.js`.
 
-## How It Works
+## How it works
 
-### Automatic Detection
-The app automatically detects the correct API URL based on:
-- **Platform** (Android/iOS)
-- **Environment** (Development/Production)
-- **Device Type** (Emulator/Physical Device)
+In development the app talks to `http://localhost:3000`, on both Android and
+iOS. On a device or emulator, `localhost` is the device itself — `adb reverse`
+is what maps it back to the machine running the backend:
 
-### Default Behavior
-- **Android Emulator**: `http://10.0.2.2:3000`
-- **iOS Simulator**: `http://localhost:3000`
-- **Physical Devices**: Uses `.env` file configuration
+```bash
+npm run tunnel      # adb reverse tcp:3000 tcp:3000 and tcp:8081 tcp:8081
+```
 
-## Configuration
+That mapping does **not** survive the cable being unplugged, the phone
+sleeping, or adb restarting. It also is not restored by
+`react-native run-android`, which only forwards Metro's port 8081 and never
+3000. When it lapses the UI still loads from Metro's cache while every API call
+fails, so re-running `npm run tunnel` is the first thing to try.
 
-### For Physical Devices
-1. Find your computer's local IP address:
-   ```bash
-   # Windows
-   ipconfig
-   
-   # Mac/Linux
-   ifconfig
-   ```
+## Reaching the backend over Wi-Fi instead of USB
 
-2. Create/update `.env` file in the frontend directory:
-   ```
-   API_URL=http://YOUR_LOCAL_IP:3000
-   ```
-   
-   Example:
-   ```
-   API_URL=http://192.168.1.100:3000
-   ```
+If you would rather not depend on the cable, set `LAN_IP` at the top of
+`src/config/api.config.js` to the address of the machine running the backend:
 
-3. Restart Metro bundler:
-   ```bash
-   npm start -- --reset-cache
-   ```
+```js
+const LAN_IP = '192.168.1.100';   // null to use the adb tunnel instead
+```
 
-### For Emulators/Simulators
-No configuration needed! The app will automatically use:
-- Android: `10.0.2.2:3000`
-- iOS: `localhost:3000`
+Find it with `ipconfig` on Windows, `ifconfig` on macOS or Linux. The phone and
+that machine have to be on the same network, and the address changes whenever
+the machine rejoins a different one.
 
-## Files Modified
-- `src/config/api.config.js` - Dynamic API URL configuration
-- `src/services/api.js` - Uses config instead of hardcoded URL
-- `babel.config.js` - Added react-native-dotenv support
-- `.env` - Environment variables (gitignored)
-- `.env.example` - Template for environment variables
+Restart Metro after editing it:
+
+```bash
+npm start -- --reset-cache
+```
+
+## Production
+
+`getApiUrl()` still returns a placeholder for non-development builds. Point it
+at the real deployment before shipping anything.
 
 ## Troubleshooting
 
-### App can't connect to backend
-1. Verify backend is running: `npm run dev` in backend directory
-2. Check your IP address hasn't changed
-3. Update `.env` with new IP if needed
-4. Clear Metro cache: `npm start -- --reset-cache`
+**Every request fails, the screens show "No connection"**
 
-### Changes not taking effect
-1. Stop Metro bundler (Ctrl+C)
-2. Clear cache: `npm start -- --reset-cache`
-3. Rebuild app: `npx react-native run-android`
+1. Confirm the backend is running: `npm run dev` in `backend/`, then check
+   `http://localhost:3000/health` from the same machine.
+2. Re-run `npm run tunnel` — this is the usual cause.
+3. If you are on Wi-Fi rather than USB, check `LAN_IP` still matches the
+   machine's current address.
+
+**Changes to the config are not taking effect**
+
+Metro caches aggressively. Stop it, then `npm start -- --reset-cache`, then
+rebuild with `npm run android`.
