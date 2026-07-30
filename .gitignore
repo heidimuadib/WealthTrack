@@ -1,0 +1,87 @@
+# ---------------------------------------------------------------------------
+# Patterns are intentionally written without a leading slash so they match at
+# any depth — the tree is a monorepo (backend/ + mobile/) and the same rules
+# have to hold inside both.
+# ---------------------------------------------------------------------------
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+vendor/
+
+# Secrets — never commit. Copy .env.example instead.
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*.jks
+*.keystore
+!debug.keystore
+
+# Local databases and dumps
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Build output
+build/
+dist/
+/out/
+.next/
+coverage/
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+.gradle/
+local.properties
+android/app/build/
+android/build/
+android/.cxx/
+android/.idea/
+captures/
+
+# iOS
+ios/build/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+*.hmap
+*.ipa
+*.xcuserstate
+
+# React Native / Metro
+.expo/
+metro-health-check*
+*.jsbundle
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+gradle_error*.txt
+
+# Editors & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
+.vercel

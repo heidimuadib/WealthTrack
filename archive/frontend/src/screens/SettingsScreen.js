@@ -1,0 +1,187 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Tag, LogOut, ChevronRight, Info } from 'lucide-react-native';
+
+import Card from '../components/Card';
+import ScreenHeader from '../components/ScreenHeader';
+import { useFeedback } from '../components/FeedbackProvider';
+import { colors, radius, spacing, typography } from '../theme';
+import useAuthStore from '../store/authStore';
+
+const SettingsScreen = ({ navigation }) => {
+    const logout = useAuthStore((state) => state.logout);
+    const user = useAuthStore((state) => state.user);
+
+    const { confirm } = useFeedback();
+
+    const handleLogout = async () => {
+        const confirmed = await confirm({
+            title: 'Log out?',
+            message: 'You will need to sign in again.',
+            confirmLabel: 'Log out',
+            destructive: true,
+        });
+
+        if (confirmed) {
+            logout();
+        }
+    };
+
+    const initial = user?.name?.trim()?.charAt(0)?.toUpperCase() || 'U';
+
+    return (
+        <View style={styles.container}>
+            <ScreenHeader title="Settings" subtitle="Your account" />
+
+            <ScrollView
+                contentContainerStyle={styles.content}
+                showsVerticalScrollIndicator={false}
+            >
+                <Card>
+                    <View style={styles.profile}>
+                        <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>{initial}</Text>
+                        </View>
+                        <View style={styles.profileText}>
+                            <Text style={styles.name}>{user?.name || 'Your account'}</Text>
+                            <Text style={typography.caption}>{user?.email || ''}</Text>
+                        </View>
+                    </View>
+                </Card>
+
+                <Text style={styles.sectionTitle}>Manage</Text>
+                <Card padded={false}>
+                    <TouchableOpacity
+                        style={styles.row}
+                        onPress={() => navigation.navigate('Categories')}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.rowIcon}>
+                            <Tag color={colors.brand} size={18} />
+                        </View>
+                        <View style={styles.rowMain}>
+                            <Text style={styles.rowTitle}>Categories</Text>
+                            <Text style={styles.rowMeta}>Add, rename, or remove categories</Text>
+                        </View>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                    </TouchableOpacity>
+                </Card>
+
+                <Text style={styles.sectionTitle}>About</Text>
+                <Card>
+                    <View style={styles.aboutRow}>
+                        <Info color={colors.textMuted} size={16} />
+                        <Text style={styles.aboutText}>
+                            WealthTrack · version 0.1.0{'\n'}
+                            Amounts are shown in Philippine pesos.
+                        </Text>
+                    </View>
+                </Card>
+
+                <TouchableOpacity
+                    style={styles.logout}
+                    onPress={handleLogout}
+                    activeOpacity={0.7}
+                >
+                    <LogOut color={colors.danger} size={18} />
+                    <Text style={styles.logoutText}>Log out</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.canvas,
+    },
+    content: {
+        padding: spacing.l,
+        paddingBottom: spacing.xxxl,
+    },
+    profile: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatar: {
+        width: 52,
+        height: 52,
+        borderRadius: radius.round,
+        backgroundColor: colors.brand,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.l,
+    },
+    avatarText: {
+        color: colors.onBrand,
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    profileText: {
+        flex: 1,
+    },
+    name: {
+        ...typography.h2,
+        marginBottom: 2,
+    },
+    sectionTitle: {
+        ...typography.overline,
+        marginTop: spacing.xl,
+        marginBottom: spacing.m,
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.l,
+    },
+    rowIcon: {
+        width: 38,
+        height: 38,
+        borderRadius: radius.s,
+        backgroundColor: colors.brandTint,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.m,
+    },
+    rowMain: {
+        flex: 1,
+    },
+    rowTitle: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: colors.textPrimary,
+    },
+    rowMeta: {
+        fontSize: 12,
+        color: colors.textMuted,
+        marginTop: 2,
+    },
+    aboutRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    aboutText: {
+        flex: 1,
+        marginLeft: spacing.m,
+        ...typography.caption,
+        lineHeight: 19,
+    },
+    logout: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: spacing.xxl,
+        paddingVertical: spacing.l,
+        borderRadius: radius.m,
+        backgroundColor: colors.dangerTint,
+    },
+    logoutText: {
+        marginLeft: spacing.s,
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.danger,
+    },
+});
+
+export default SettingsScreen;
