@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // A budget is addressed by (month, year), so both have to be real before they
 // reach the compound unique key — parseInt('abc') yields NaN, which Prisma

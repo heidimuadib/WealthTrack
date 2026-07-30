@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Local-time month boundaries: an expense belongs to the month the user saw on
 // their calendar, not the UTC month.

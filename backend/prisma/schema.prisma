@@ -29,11 +29,20 @@ model Category {
   expenses  Expense[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  // Two categories with the same name are indistinguishable in the picker and
+  // split a total that the user thinks of as one line.
+  @@unique([userId, name])
+  // Every read of this table is "the categories belonging to this user".
+  @@index([userId])
 }
 
 model Expense {
   id          Int      @id @default(autoincrement())
-  amount      Float
+  // Money is Decimal, not Float. A Float cannot hold 0.10 exactly, so repeated
+  // addition drifts — a column of centavos that should total ₱100.00 lands on
+  // ₱99.99999999999999 instead.
+  amount      Decimal  @db.Decimal(12, 2)
   date        DateTime @default(now())
   notes       String?
   receiptUrl  String?
@@ -43,11 +52,15 @@ model Expense {
   user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Matches the only shape this table is queried by: one user's expenses,
+  // filtered to a month, newest first.
+  @@index([userId, date])
 }
 
 model Budget {
   id        Int      @id @default(autoincrement())
-  amount    Float
+  amount    Decimal  @db.Decimal(12, 2)
   month     Int
   year      Int
   userId    Int

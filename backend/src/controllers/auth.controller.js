@@ -1,8 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Seeded for every new account. Without these a fresh user has no category to
 // pick on the Add Expense screen, and cannot record anything at all.

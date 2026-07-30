@@ -1,6 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 
-const prisma = new PrismaClient();
+// Raised when the [userId, name] unique constraint rejects a write. The user
+// already has a category by that name, which is worth saying plainly rather
+// than reporting as a server fault.
+const isDuplicateName = (error) => error?.code === 'P2002';
 
 const parseId = (value) => {
     const id = parseInt(value, 10);
@@ -37,6 +40,9 @@ const createCategory = async (req, res) => {
         });
         res.status(201).json(category);
     } catch (error) {
+        if (isDuplicateName(error)) {
+            return res.status(409).json({ error: 'You already have a category with that name.' });
+        }
         res.status(500).json({ error: 'Failed to create category' });
     }
 };
@@ -81,6 +87,9 @@ const updateCategory = async (req, res) => {
         const category = await prisma.category.findUnique({ where: { id } });
         res.json(category);
     } catch (error) {
+        if (isDuplicateName(error)) {
+            return res.status(409).json({ error: 'You already have a category with that name.' });
+        }
         res.status(500).json({ error: 'Failed to update category' });
     }
 };

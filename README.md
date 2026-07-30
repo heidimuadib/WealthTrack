@@ -40,13 +40,19 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 Create the schema and start the server:
 
 ```bash
-npx prisma db push      # applies prisma/schema.prisma to the database
+npx prisma migrate deploy   # applies prisma/migrations to the database
 npx prisma generate
-npm run dev             # nodemon on http://localhost:3000
+npm run dev                 # nodemon on http://localhost:3000
 ```
 
-> There is no `prisma/migrations/` directory — the schema is applied directly
-> with `db push`. `wealthtrack.sql` holds the equivalent raw DDL for reference.
+To change the schema, edit `prisma/schema.prisma` and run
+`npx prisma migrate dev --name what_changed`, which writes a new migration and
+applies it. `wealthtrack.sql` predates the migration history and is kept only
+as a reference dump.
+
+Money is stored as `Decimal(12, 2)` rather than a float, so amounts are exact
+and database-side totals do not drift. The API converts those to JSON numbers
+on the way out, so clients see plain numbers.
 
 ### API
 
@@ -95,5 +101,6 @@ To reach the backend over Wi-Fi instead of USB, set `LAN_IP` in
 - `src/config/api.config.js` still points production at a placeholder URL.
 - Release builds are signed with the debug keystore — generate a real one
   before distributing.
-- `Expense.amount` and `Budget.amount` are `Float`; money should move to
-  `Decimal` before this handles real balances.
+- Monthly totals are summed on the client from JS numbers. Display rounds to
+  two decimals so this is not visible, but moving the sum into the database
+  would make the arithmetic exact end to end.
