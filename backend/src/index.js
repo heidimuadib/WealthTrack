@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth.routes');
 const expenseRoutes = require('./routes/expense.routes');
 const budgetRoutes = require('./routes/budget.routes');
 const categoryRoutes = require('./routes/category.routes');
+const reportRoutes = require('./routes/report.routes');
 
 dotenv.config();
 
@@ -21,9 +22,56 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
-app.use(cors());
+// Helmet's Strict-Transport-Security (HSTS) header can cause Android's OkHttp
+// to silently upgrade HTTP connections to HTTPS, dropping responses.
+// Disabled for local dev — re-enable for production with HTTPS.
+app.use(helmet({
+    hsts: false,
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+}));
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
+}));
 app.use(express.json({ limit: '100kb' }));
+
+// Anything here would otherwise be written to the terminal, and scrolled past
+// by whoever is looking over your shoulder, in plain text.
+const SECRET_FIELDS = ['password', 'currentPassword', 'newPassword', 'token', 'idToken'];
+
+const redactSecrets = (body) => {
+    const safe = { ...body };
+    SECRET_FIELDS.forEach((field) => {
+        if (field in safe) {
+            safe[field] = '[redacted]';
+        }
+    });
+    return safe;
+};
+
+// Request logging is a development aid. In production it is noise at best and
+// a slow leak of who is using the API and when at worst.
+if (process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => {
+        const start = Date.now();
+        console.log(`\n========================================`);
+        console.log(`[BACKEND REQ] ${new Date().toISOString()} ${req.method} ${req.url}`);
+        if (Object.keys(req.body || {}).length > 0) {
+            console.log(`[BACKEND BODY]`, JSON.stringify(redactSecrets(req.body)));
+        }
+        res.on('finish', () => {
+            console.log(
+                `[BACKEND RES] ${req.method} ${req.url} -> ${res.statusCode} (${Date.now() - start}ms)`
+            );
+            console.log(`========================================\n`);
+        });
+        next();
+    });
+}
 
 // Credential endpoints are the ones worth guessing at, so they get a tight
 // budget of their own. Counting only failures lets someone who keeps logging
@@ -49,6 +97,7 @@ const apiLimiter = rateLimit({
 
 app.use('/auth/login', authLimiter);
 app.use('/auth/register', authLimiter);
+app.use('/auth/google', authLimiter);
 app.use(apiLimiter);
 
 // Routes
@@ -56,6 +105,7 @@ app.use('/auth', authRoutes);
 app.use('/expenses', expenseRoutes);
 app.use('/budget', budgetRoutes);
 app.use('/categories', categoryRoutes);
+app.use('/reports', reportRoutes);
 
 app.get('/', (req, res) => {
     res.send('WealthTrack API is running');

@@ -10,12 +10,16 @@ export const useExpenses = (period) =>
 
 // Every write invalidates the whole expenses prefix rather than one month: an
 // edit can move an expense between months, which leaves two of them wrong.
+// Reports are aggregations of the same rows, so they go stale together.
 const useExpenseMutation = (mutationFn) => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+        },
     });
 };
 

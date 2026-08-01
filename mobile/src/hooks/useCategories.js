@@ -16,8 +16,10 @@ const useCategoryMutation = (mutationFn) => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
             // Expenses embed their category, so a rename or recolour has to
-            // reach the lists showing them too.
+            // reach the lists showing them too — and the report names
+            // categories as well.
             queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
         },
     });
 };

@@ -16,4 +16,8 @@ export const queryKeys = {
     categories: {
         all: ['categories'],
     },
+    reports: {
+        all: ['reports'],
+        year: (year) => ['reports', year],
+    },
 };

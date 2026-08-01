@@ -4,6 +4,7 @@ import {
     Tag,
     LogOut,
     ChevronRight,
+    BarChart3,
     Info,
     Smartphone,
     Sun,
@@ -73,6 +74,21 @@ const SettingsScreen = ({ navigation }) => {
                 <Card padded={false}>
                     <TouchableOpacity
                         style={styles.row}
+                        onPress={() => navigation.navigate('Reports')}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.rowIcon}>
+                            <BarChart3 color={colors.brand} size={18} />
+                        </View>
+                        <View style={styles.rowMain}>
+                            <Text style={styles.rowTitle}>Reports</Text>
+                            <Text style={styles.rowMeta}>Spending by month and category</Text>
+                        </View>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.row, styles.rowDivider]}
                         onPress={() => navigation.navigate('Categories')}
                         activeOpacity={0.7}
                     >
@@ -195,6 +211,10 @@ const createStyles = ({ colors, typography }) =>
         flexDirection: 'row',
         alignItems: 'center',
         padding: spacing.l,
+    },
+    rowDivider: {
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
     },
     rowIcon: {
         width: 38,

@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet, StatusBar } from 'react-nati
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Home, List, Plus, PieChart, Settings, Wallet } from 'lucide-react-native';
+import { Home, List, Plus, PieChart, Settings } from 'lucide-react-native';
 
 import HomeScreen from '../screens/HomeScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
@@ -11,7 +11,9 @@ import AddExpenseScreen from '../screens/AddExpenseScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import LoginScreen from '../screens/LoginScreen';
+import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
 import useAuthStore from '../store/authStore';
@@ -103,7 +105,7 @@ const SplashScreen = () => {
     return (
         <View style={styles.splash}>
             <View style={styles.splashMark}>
-                <Wallet color={colors.onBrand} size={26} />
+                <BrandMark color={colors.onBrand} size={30} />
             </View>
             <Text style={styles.splashName}>WealthTrack</Text>
             <ActivityIndicator color={colors.brand} />
@@ -143,6 +145,7 @@ const AppNavigator = () => {
                             any tab without nesting a stack inside each one. */}
                         <Stack.Screen name="EditExpense" component={AddExpenseScreen} />
                         <Stack.Screen name="Categories" component={CategoriesScreen} />
+                        <Stack.Screen name="Reports" component={ReportsScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Login" component={LoginScreen} />
@@ -192,7 +195,7 @@ const createStyles = ({ colors }) =>
     },
     splashName: {
         fontSize: 20,
-        fontWeight: '700',
+        fontFamily: 'SpaceGrotesk-Bold',
         letterSpacing: -0.4,
         color: colors.textPrimary,
         marginBottom: spacing.xl,
