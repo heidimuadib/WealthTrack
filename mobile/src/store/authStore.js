@@ -25,7 +25,9 @@ const useAuthStore = create((set) => ({
                 [USER_KEY, JSON.stringify(user)],
             ]);
         } catch (error) {
-            console.warn('Failed to persist session', error);
+            if (__DEV__) {
+                console.warn('Failed to persist session', error);
+            }
         }
     },
 
@@ -38,7 +40,9 @@ const useAuthStore = create((set) => ({
         try {
             await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
         } catch (error) {
-            console.warn('Failed to clear session', error);
+            if (__DEV__) {
+                console.warn('Failed to clear session', error);
+            }
         }
     },
 
@@ -70,7 +74,9 @@ const useAuthStore = create((set) => ({
 
             return { token, user };
         } catch (error) {
-            console.warn('Failed to read stored session', error);
+            if (__DEV__) {
+                console.warn('Failed to read stored session', error);
+            }
             return null;
         }
     },

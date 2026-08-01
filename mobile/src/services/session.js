@@ -1,16 +1,24 @@
 import { authService } from './api';
 import useAuthStore from '../store/authStore';
 
+// Session tracing earned its keep during the login-hang investigation, but it
+// narrates account activity, so it stays out of release builds.
+const trace = (...args) => {
+    if (__DEV__) {
+        console.log('[Session]', ...args);
+    }
+};
+
 // Runs once on app start. A stored token is treated as a claim to be checked,
 // not as proof of a live session — the old code trusted it blindly, which left
 // the app "logged in" with an expired token and no user data.
 export const restoreSession = async () => {
-    console.log('[Session] restoreSession started');
+    trace('restoreSession started');
     const { loadStored, hydrate, logout, setRestoring } = useAuthStore.getState();
 
     try {
         const stored = await loadStored();
-        console.log('[Session] stored token found:', !!stored);
+        trace('stored token found:', !!stored);
 
         if (!stored) {
             return;
@@ -21,13 +29,13 @@ export const restoreSession = async () => {
         hydrate(stored);
 
         try {
-            console.log('[Session] Validating stored token with /auth/me ...');
+            trace('Validating stored token with /auth/me ...');
             const res = await authService.me();
-            console.log('[Session] Token valid, user:', res.data.user?.email);
+            trace('Token valid, user:', res.data.user?.email);
             // Server confirmed the token and returned fresh profile data.
             hydrate({ token: stored.token, user: res.data.user });
         } catch (error) {
-            console.warn('[Session] /auth/me failed:', error.response?.status, error.message);
+            trace('/auth/me failed:', error.response?.status, error.message);
             if (error.response?.status === 401) {
                 // Only logout if the user hasn't manually logged in during this
                 // async window — prevents the race where a slow /auth/me 401
@@ -35,10 +43,10 @@ export const restoreSession = async () => {
                 const currentlyAuthenticated = useAuthStore.getState().isAuthenticated;
                 const currentToken = useAuthStore.getState().token;
                 if (!currentlyAuthenticated || currentToken === stored.token) {
-                    console.warn('[Session] Token expired, logging out.');
+                    trace('Token expired, logging out.');
                     await logout();
                 } else {
-                    console.log('[Session] User already logged in manually, skipping logout.');
+                    trace('User already logged in manually, skipping logout.');
                 }
             }
             // Any other failure is most likely no network. Keep the cached
@@ -46,7 +54,7 @@ export const restoreSession = async () => {
         }
     } finally {
         // Only set restoring=false if the user hasn't already done so via login()
-        console.log('[Session] restoreSession done, setting isRestoring=false');
+        trace('restoreSession done, setting isRestoring=false');
         setRestoring(false);
     }
 };

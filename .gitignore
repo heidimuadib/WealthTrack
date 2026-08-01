@@ -73,6 +73,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 gradle_error*.txt
+clean_log*.txt
 
 # Editors & OS
 .DS_Store

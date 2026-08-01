@@ -17,7 +17,6 @@
     "google-auth-library": "^11.0.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3",
     "prisma": "^5.7.0"
   },
   "devDependencies": {

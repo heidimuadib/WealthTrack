@@ -51,7 +51,9 @@ export const signInWithGoogle = async () => {
 
         // Google reports every configuration mistake as one opaque code, so the
         // code itself is the only thing worth reading when this fails.
-        console.warn('[GoogleSignIn] failed', error?.code, error?.message);
+        if (__DEV__) {
+            console.warn('[GoogleSignIn] failed', error?.code, error?.message);
+        }
 
         if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
             throw fail('Google Play services is unavailable on this device.');
