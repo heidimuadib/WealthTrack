@@ -31,23 +31,37 @@ export const radius = {
 // tabular numerals keep currency columns from shifting as digits change
 const tabular = { fontVariant: ['tabular-nums'] };
 
+// Space Grotesk is the display face — headings and hero figures only. Body,
+// captions and money columns stay on the system font: Roboto's tabular figures
+// are guaranteed, and a display face at 13px is texture, not type.
+//
+// Android resolves these from android/app/src/main/assets/fonts by exact file
+// name, one file per weight. Never combine them with fontWeight: the file is
+// already bold, and a numeric weight on top makes Android paint fake bold over
+// it.
+export const fonts = {
+    displayBold: 'SpaceGrotesk-Bold',
+    displaySemiBold: 'SpaceGrotesk-SemiBold',
+    displayMedium: 'SpaceGrotesk-Medium',
+};
+
 const createTypography = (colors) => ({
     display: {
         fontSize: 36,
-        fontWeight: '700',
+        fontFamily: fonts.displayBold,
         letterSpacing: -1,
         color: colors.textPrimary,
         ...tabular,
     },
     h1: {
         fontSize: 22,
-        fontWeight: '700',
+        fontFamily: fonts.displayBold,
         letterSpacing: -0.3,
         color: colors.textPrimary,
     },
     h2: {
         fontSize: 17,
-        fontWeight: '600',
+        fontFamily: fonts.displaySemiBold,
         color: colors.textPrimary,
     },
     body: {

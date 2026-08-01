@@ -7,7 +7,10 @@ import { formatCompact } from '../utils/format';
 // Built directly on react-native-svg rather than a chart library so the ring
 // matches the rest of the design. Segments are drawn by advancing the dash
 // offset around a single stroked circle.
-const DonutChart = ({ data = [], size = 172, thickness = 20, caption = 'Total' }) => {
+//
+// A thin ring rather than a thick one: at 20px a one-category month rendered
+// as a heavy solid band that shouted over the number it was framing.
+const DonutChart = ({ data = [], size = 172, thickness = 13, caption = 'Total' }) => {
     const theme = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -15,15 +18,24 @@ const DonutChart = ({ data = [], size = 172, thickness = 20, caption = 'Total' }
     const circumference = 2 * Math.PI * radius;
     const total = data.reduce((sum, item) => sum + item.value, 0);
 
+    const slices = data.filter((item) => item.value > 0);
+
+    // A sliver of canvas between neighbours so segments read as separate
+    // quantities instead of one striped band. A full-circle single segment
+    // has no neighbours, so no gap.
+    const gap = slices.length > 1 ? 3 : 0;
+
     let cursor = 0;
-    const segments = data
-        .filter((item) => item.value > 0)
-        .map((item) => {
-            const length = total > 0 ? (item.value / total) * circumference : 0;
-            const segment = { ...item, length, offset: cursor };
-            cursor += length;
-            return segment;
-        });
+    const segments = slices.map((item) => {
+        const length = total > 0 ? (item.value / total) * circumference : 0;
+        // The gap comes out of the paint, split across both ends so each
+        // segment stays centred on its true share. Tiny shares keep a 2px
+        // stub rather than vanishing entirely.
+        const painted = Math.max(length - gap, 2);
+        const segment = { ...item, painted, offset: cursor + (length - painted) / 2 };
+        cursor += length;
+        return segment;
+    });
 
     return (
         <View style={[styles.container, { width: size, height: size }]}>
@@ -47,7 +59,7 @@ const DonutChart = ({ data = [], size = 172, thickness = 20, caption = 'Total' }
                             r={radius}
                             stroke={segment.color}
                             strokeWidth={thickness}
-                            strokeDasharray={`${segment.length} ${circumference - segment.length}`}
+                            strokeDasharray={`${segment.painted} ${circumference - segment.painted}`}
                             strokeDashoffset={-segment.offset}
                             strokeLinecap="butt"
                             fill="none"
@@ -84,10 +96,9 @@ const createStyles = ({ colors, typography }) =>
         },
         total: {
             fontSize: 22,
-            fontWeight: '700',
+            fontFamily: 'SpaceGrotesk-Bold',
             letterSpacing: -0.5,
             color: colors.textPrimary,
-            fontVariant: ['tabular-nums'],
         },
     });
 
