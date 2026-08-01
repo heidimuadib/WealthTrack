@@ -22,6 +22,16 @@ export const light = {
     textMuted: '#7B8785',
     textOnBrandMuted: 'rgba(255,255,255,0.72)',
 
+    // Ink and fills for the gradient card. Light mode puts white ink on deep
+    // teal, so these are white at low alpha; dark mode inverts to dark ink on
+    // bright teal, so the same slots are near-black there. Anything drawn on
+    // that card must use these rather than a literal white.
+    onBrandSheen: 'rgba(255,255,255,0.14)',
+    onBrandTrack: 'rgba(255,255,255,0.22)',
+    onBrandChip: 'rgba(255,255,255,0.16)',
+    onBrandPace: 'rgba(255,255,255,0.70)',
+    onBrandOver: '#F2B8B5',
+
     // Lines
     border: '#E9E1D6',
     borderStrong: '#DDD2C3',
@@ -62,6 +72,15 @@ export const dark = {
     textSecondary: '#BFB6A7',
     textMuted: '#8C8376',
     textOnBrandMuted: 'rgba(8,32,30,0.72)',
+
+    // The dark-mode card is bright teal carrying dark ink, so these invert:
+    // near-black at low alpha, and an over-budget red deep enough to read
+    // against that brightness rather than the pale one light mode uses.
+    onBrandSheen: 'rgba(255,255,255,0.20)',
+    onBrandTrack: 'rgba(8,32,30,0.16)',
+    onBrandChip: 'rgba(8,32,30,0.12)',
+    onBrandPace: 'rgba(8,32,30,0.55)',
+    onBrandOver: '#8A2F26',
 
     border: '#302921',
     borderStrong: '#453B30',

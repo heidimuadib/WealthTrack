@@ -8,7 +8,6 @@ import {
     ActivityIndicator,
     TouchableOpacity,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { PieChart, Receipt, TrendingUp } from 'lucide-react-native';
 
 import Card from '../components/Card';
@@ -17,7 +16,7 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
-import ProgressBar from '../components/ProgressBar';
+import SpendSummaryCard from '../components/SpendSummaryCard';
 import { radius, spacing, useTheme } from '../theme';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBudget } from '../hooks/useBudget';
@@ -27,7 +26,7 @@ import {
     currentMonthYear,
     formatCurrency,
     formatDayLabel,
-    formatCompact,
+    shiftMonth,
 } from '../utils/format';
 
 // A stable reference for the not-yet-loaded case. A fresh [] on every render
@@ -37,7 +36,7 @@ const NO_EXPENSES = [];
 
 const HomeScreen = ({ navigation }) => {
     const theme = useTheme();
-    const { colors, typography, categoryPalette, balanceGradient, gradientAngles } = theme;
+    const { colors, typography, categoryPalette } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const [period, setPeriod] = useState(currentMonthYear);
@@ -49,6 +48,13 @@ const HomeScreen = ({ navigation }) => {
     // simply is not part of this query.
     const expenseQuery = useExpenses(period);
     const budgetQuery = useBudget(period);
+
+    // Last month, purely so the headline figure can say whether this month is
+    // running hotter or cooler. It is deliberately kept out of `loading` and
+    // `error` below: the dashboard is about this month, and a missing
+    // comparison should cost a line of text, not the whole screen.
+    const previousPeriod = useMemo(() => shiftMonth(period, -1), [period]);
+    const previousQuery = useExpenses(previousPeriod);
 
     useRefreshOnFocus(expenseQuery);
     useRefreshOnFocus(budgetQuery);
@@ -75,6 +81,16 @@ const HomeScreen = ({ navigation }) => {
     const totalSpent = useMemo(
         () => expenses.reduce((sum, item) => sum + item.amount, 0),
         [expenses]
+    );
+
+    // null rather than 0 while it is still loading — "nothing logged last
+    // month" and "we do not know yet" are different statements.
+    const previousTotal = useMemo(
+        () =>
+            previousQuery.data === undefined
+                ? null
+                : previousQuery.data.reduce((sum, item) => sum + item.amount, 0),
+        [previousQuery.data]
     );
 
     // Real category totals, replacing the hardcoded Food/Transport/Bills
@@ -105,10 +121,6 @@ const HomeScreen = ({ navigation }) => {
                 share: totalSpent > 0 ? item.value / totalSpent : 0,
             }));
     }, [expenses, totalSpent, categoryPalette]);
-
-    const remaining = budget - totalSpent;
-    const isOver = remaining < 0;
-    const progress = budget > 0 ? totalSpent / budget : 0;
 
     if (loading) {
         return (
@@ -173,38 +185,13 @@ const HomeScreen = ({ navigation }) => {
             ) : null}
 
             {/* The single gradient in the app, reserved for the headline figure. */}
-            <LinearGradient
-                colors={balanceGradient}
-                {...gradientAngles.diagonal}
-                style={styles.balanceCard}
-            >
-                <Text style={styles.balanceLabel}>Spent this month</Text>
-                <Text style={styles.balanceAmount}>{formatCurrency(totalSpent)}</Text>
-
-                {budget > 0 ? (
-                    <>
-                        <View style={styles.balanceProgress}>
-                            <ProgressBar
-                                progress={progress}
-                                color={isOver ? '#F2B8B5' : colors.onBrand}
-                                trackColor="rgba(255,255,255,0.22)"
-                                height={6}
-                            />
-                        </View>
-                        <Text style={styles.balanceMeta}>
-                            {isOver
-                                ? `${formatCurrency(Math.abs(remaining))} over your ${formatCompact(budget)} budget`
-                                : `${formatCurrency(remaining)} left of ${formatCompact(budget)}`}
-                        </Text>
-                    </>
-                ) : (
-                    <TouchableOpacity onPress={() => navigation.navigate('Budget')}>
-                        <Text style={styles.balanceMetaLink}>
-                            No budget set for this month — tap to add one
-                        </Text>
-                    </TouchableOpacity>
-                )}
-            </LinearGradient>
+            <SpendSummaryCard
+                period={period}
+                total={totalSpent}
+                budget={budget}
+                previousTotal={previousTotal}
+                onPressBudget={() => navigation.navigate('Budget')}
+            />
 
             <Text style={styles.sectionTitle}>Spending breakdown</Text>
             <Card>
@@ -305,7 +292,7 @@ const HomeScreen = ({ navigation }) => {
     );
 };
 
-const createStyles = ({ colors, typography, shadows }) =>
+const createStyles = ({ colors, typography }) =>
     StyleSheet.create({
     container: {
         flex: 1,
@@ -358,41 +345,6 @@ const createStyles = ({ colors, typography, shadows }) =>
     },
     monthRow: {
         marginBottom: spacing.l,
-    },
-    balanceCard: {
-        borderRadius: radius.xl,
-        padding: spacing.xl,
-        marginBottom: spacing.xl,
-        ...shadows.raised,
-    },
-    balanceLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 1.2,
-        textTransform: 'uppercase',
-        color: colors.textOnBrandMuted,
-        marginBottom: spacing.s,
-    },
-    balanceAmount: {
-        fontSize: 38,
-        fontWeight: '700',
-        letterSpacing: -1,
-        color: colors.onBrand,
-        fontVariant: ['tabular-nums'],
-    },
-    balanceProgress: {
-        marginTop: spacing.l,
-        marginBottom: spacing.s,
-    },
-    balanceMeta: {
-        fontSize: 13,
-        color: colors.textOnBrandMuted,
-    },
-    balanceMetaLink: {
-        fontSize: 13,
-        color: colors.onBrand,
-        marginTop: spacing.l,
-        textDecorationLine: 'underline',
     },
     sectionHeader: {
         flexDirection: 'row',

@@ -23,6 +23,21 @@ export const formatCurrency = (value, { decimals = 2, sign = false } = {}) => {
 // Drops the centavos for headline figures where they only add noise.
 export const formatCompact = (value) => formatCurrency(value, { decimals: 0 });
 
+// Headline figures set the symbol and the centavos at their own size, so they
+// need the parts rather than one string. Truncates rather than rounds the peso
+// part, so the whole and the fraction always describe the same amount.
+export const splitCurrency = (value) => {
+    const amount = Number(value) || 0;
+    const [whole, fraction] = Math.abs(amount).toFixed(2).split('.');
+
+    return {
+        sign: amount < 0 ? '-' : '',
+        symbol: PESO,
+        whole: groupThousands(whole),
+        fraction: `.${fraction}`,
+    };
+};
+
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
