@@ -1,6 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../lib/prisma');
+
+// Absent when Google sign-in has not been configured. The route below answers
+// 503 in that case rather than failing in a way the app has to guess at.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID;
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // Seeded for every new account. Without these a fresh user has no category to
 // pick on the Add Expense screen, and cannot record anything at all.
@@ -15,8 +21,12 @@ const DEFAULT_CATEGORIES = [
     { name: 'Other', color: '#7B8785', icon: 'circle-dashed' },
 ];
 
+// An hour was short enough that the app asked for the password again during
+// normal use, and there is no refresh token to soften that.
 const signToken = (user) =>
-    jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    });
 
 const register = async (req, res) => {
     const { email, password, name } = req.body;
@@ -34,6 +44,7 @@ const register = async (req, res) => {
     try {
         const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existingUser) {
+            console.warn(`[AUTH REGISTER 400] User already exists: ${normalizedEmail}`);
             return res.status(400).json({ error: 'User already exists' });
         }
 
@@ -72,11 +83,21 @@ const login = async (req, res) => {
             where: { email: email.trim().toLowerCase() },
         });
         if (!user) {
+            console.warn(`[AUTH LOGIN 400] User not found: ${email}`);
+            return res.status(400).json({ error: 'Invalid credentials' });
+        }
+
+        // An account created through Google has no password to compare. Saying
+        // so would confirm the address is registered, so it fails like any
+        // other wrong credential.
+        if (!user.password) {
+            console.warn(`[AUTH LOGIN 400] Password login on a Google-only account`);
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            console.warn(`[AUTH LOGIN 400] Wrong password for: ${email}`);
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
@@ -85,6 +106,81 @@ const login = async (req, res) => {
             token: signToken(user),
         });
     } catch (error) {
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
+// Exchanges a Google ID token for one of ours. The token is verified against
+// Google's public keys server-side: anything the app sends could have been
+// crafted by whoever holds the device, so nothing in it is trusted until then.
+const google = async (req, res) => {
+    if (!googleClient) {
+        return res.status(503).json({ error: 'Google sign-in is not available right now.' });
+    }
+
+    const { idToken } = req.body;
+
+    if (typeof idToken !== 'string' || idToken.trim() === '') {
+        return res.status(400).json({ error: 'Missing Google token' });
+    }
+
+    let payload;
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            // Rejects a token minted for someone else's app, which is otherwise
+            // a perfectly valid Google token.
+            audience: GOOGLE_CLIENT_ID,
+        });
+        payload = ticket.getPayload();
+    } catch (error) {
+        console.warn('[AUTH GOOGLE 401] Token rejected:', error.message);
+        return res.status(401).json({ error: 'Could not verify that Google account' });
+    }
+
+    // Some account types carry an address Google has not confirmed. Accepting
+    // one would hand over any account whose email a stranger can claim.
+    if (!payload || !payload.email || payload.email_verified === false) {
+        return res.status(401).json({ error: 'That Google account has no verified email' });
+    }
+
+    const email = payload.email.toLowerCase();
+
+    try {
+        let user = await prisma.user.findUnique({ where: { googleId: payload.sub } });
+
+        if (!user) {
+            const existing = await prisma.user.findUnique({ where: { email } });
+
+            if (existing) {
+                // Same person arriving a second way. Linking beats refusing:
+                // otherwise an account made with a password can never be opened
+                // with the Google button on the same address.
+                user = await prisma.user.update({
+                    where: { id: existing.id },
+                    data: {
+                        googleId: payload.sub,
+                        name: existing.name || payload.name || null,
+                    },
+                });
+            } else {
+                user = await prisma.user.create({
+                    data: {
+                        email,
+                        googleId: payload.sub,
+                        name: payload.name || null,
+                        categories: { create: DEFAULT_CATEGORIES },
+                    },
+                });
+            }
+        }
+
+        res.json({
+            user: { id: user.id, email: user.email, name: user.name },
+            token: signToken(user),
+        });
+    } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Something went wrong' });
     }
 };
@@ -109,4 +205,4 @@ const me = async (req, res) => {
     }
 };
 
-module.exports = { register, login, me };
+module.exports = { register, login, google, me };
