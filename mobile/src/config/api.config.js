@@ -1,29 +1,13 @@
 import { Platform } from 'react-native';
 
-// Set this only if you need to reach the backend over Wi-Fi instead of USB
-// (find it with `ipconfig`). Leave null to use the adb reverse tunnel.
-const LAN_IP = null;
+// This machine's Wi-Fi address — the phone reaches the API directly over the
+// LAN, bypassing the adb reverse tunnel and its USB flakiness entirely.
+// If the PC's address changes (check with `ipconfig`), update it here.
+// USB-only fallback: return 'http://127.0.0.1:3000' and run `npm run tunnel`.
+const LAN_IP = '192.168.1.7';
 
 const getApiUrl = () => {
-  if (__DEV__) {
-    if (LAN_IP) {
-      return `http://${LAN_IP}:3000`;
-    }
-
-    // `adb reverse tcp:3000 tcp:3000` maps localhost on the device to this
-    // machine, which works for both USB-connected phones and emulators, and
-    // survives the laptop changing networks.
-    if (Platform.OS === 'android') {
-      return 'http://localhost:3000';
-    }
-
-    if (Platform.OS === 'ios') {
-      return 'http://localhost:3000';
-    }
-  }
-
-  // TODO: point this at the real deployment before shipping.
-  return 'https://your-production-api.com';
+  return `http://${LAN_IP}:3000`;
 };
 
 export const API_URL = getApiUrl();
