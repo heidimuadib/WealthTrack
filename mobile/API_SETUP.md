@@ -5,55 +5,53 @@ cannot reach one. The logic lives in `src/config/api.config.js`.
 
 ## How it works
 
-In development the app talks to `http://localhost:3000`, on both Android and
-iOS. On a device or emulator, `localhost` is the device itself — `adb reverse`
-is what maps it back to the machine running the backend:
-
-```bash
-npm run tunnel      # adb reverse tcp:3000 tcp:3000 and tcp:8081 tcp:8081
-```
-
-That mapping does **not** survive the cable being unplugged, the phone
-sleeping, or adb restarting. It also is not restored by
-`react-native run-android`, which only forwards Metro's port 8081 and never
-3000. When it lapses the UI still loads from Metro's cache while every API call
-fails, so re-running `npm run tunnel` is the first thing to try.
-
-## Reaching the backend over Wi-Fi instead of USB
-
-If you would rather not depend on the cable, set `LAN_IP` at the top of
-`src/config/api.config.js` to the address of the machine running the backend:
+Development builds call the backend **directly over the LAN**:
 
 ```js
-const LAN_IP = '192.168.1.100';   // null to use the adb tunnel instead
+const LAN_IP = '192.168.1.7';   // this machine's Wi-Fi address
 ```
 
-Find it with `ipconfig` on Windows, `ifconfig` on macOS or Linux. The phone and
-that machine have to be on the same network, and the address changes whenever
-the machine rejoins a different one.
+The phone and the machine running the backend must be on the same network, and
+the address changes whenever the machine rejoins a different one — check with
+`ipconfig` (Windows) or `ifconfig` (macOS/Linux), update `LAN_IP`, and reload.
 
-Restart Metro after editing it:
+Metro (the JS bundler) still loads over the USB cable, so after plugging in:
 
 ```bash
-npm start -- --reset-cache
+adb reverse tcp:8081 tcp:8081   # or: npm run tunnel
 ```
 
-## Production
+Release builds use `PRODUCTION_API_URL`, which is a deliberately unresolvable
+placeholder until a real deployment exists — a release build fails loudly
+instead of quietly talking to a developer's LAN. Release builds also refuse
+cleartext HTTP (that permission is debug-only), so the production URL must be
+HTTPS.
 
-`getApiUrl()` still returns a placeholder for non-development builds. Point it
-at the real deployment before shipping anything.
+## Falling back to the USB tunnel
+
+If LAN access is not possible (public Wi-Fi, client isolation), point
+`getApiUrl()` back at `http://127.0.0.1:3000` and run `npm run tunnel`, which
+maps ports 3000 and 8081 over the cable. That mapping does **not** survive the
+cable being unplugged, the phone sleeping, or adb restarting — re-run it when
+API calls start failing. It is also not restored by builds, which only forward
+Metro's port.
 
 ## Troubleshooting
 
 **Every request fails, the screens show "No connection"**
 
-1. Confirm the backend is running: `npm run dev` in `backend/`, then check
-   `http://localhost:3000/health` from the same machine.
-2. Re-run `npm run tunnel` — this is the usual cause.
-3. If you are on Wi-Fi rather than USB, check `LAN_IP` still matches the
-   machine's current address.
+1. Confirm the backend is running: `npm run dev` in `backend/`, then open
+   `http://localhost:3000/health` on the same machine.
+2. Check `LAN_IP` still matches the machine's current address (`ipconfig`).
+3. Confirm phone and machine are on the same Wi-Fi network.
 
-**Changes to the config are not taking effect**
+**Changes to this config are not taking effect**
 
-Metro caches aggressively. Stop it, then `npm start -- --reset-cache`, then
-rebuild with `npm run android`.
+Metro caches aggressively, and `--reset-cache` does not always help. Stop
+Metro, delete `%TEMP%\metro-cache`, then `npm start`. Verify a change actually
+reached the served bundle before debugging anything else:
+
+```powershell
+Invoke-WebRequest "http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false" -OutFile bundle.js
+Select-String "the-string-you-changed" bundle.js
+```

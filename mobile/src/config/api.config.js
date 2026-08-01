@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 // This machine's Wi-Fi address — the phone reaches the API directly over the
 // LAN, bypassing the adb reverse tunnel and its USB flakiness entirely.
 // If the PC's address changes (check with `ipconfig`), update it here.
