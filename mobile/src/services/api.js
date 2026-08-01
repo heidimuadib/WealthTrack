@@ -15,24 +15,29 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
+        console.log(`[MOBILE REQ] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
         const token = useAuthStore.getState().token;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
-    (error) => Promise.reject(error)
+    (error) => {
+        console.error('[MOBILE REQ ERR]', error);
+        return Promise.reject(error);
+    }
 );
 
 // Signing in is allowed to fail without destroying the session.
 const ENTRY_ROUTES = ['/auth/login', '/auth/register'];
 
-// The token lives for an hour and there is no refresh flow, so every screen
-// would otherwise start silently failing once it lapses. Clearing the session
-// on a 401 sends the user back to the login screen instead.
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log(`[MOBILE RES OK] ${response.config.url} Status: ${response.status}`, response.data);
+        return response;
+    },
     (error) => {
+        console.error(`[MOBILE RES FAIL] ${error.config?.url || ''} Message: ${error.message}`, error.response?.data || error.code || '');
         const url = error.config?.url || '';
         const isEntryRoute = ENTRY_ROUTES.some((route) => url.includes(route));
 
@@ -47,6 +52,9 @@ api.interceptors.response.use(
 export const authService = {
     login: (email, password) => api.post('/auth/login', { email, password }),
     register: (name, email, password) => api.post('/auth/register', { name, email, password }),
+    // Trades a Google ID token for one of ours. Same response shape as login,
+    // so callers cannot tell the two routes apart.
+    google: (idToken) => api.post('/auth/google', { idToken }),
     me: () => api.get('/auth/me'),
 };
 
@@ -61,6 +69,10 @@ export const expenseService = {
 export const budgetService = {
     get: (month, year) => api.get(`/budget?month=${month}&year=${year}`),
     set: (data) => api.post('/budget', data),
+};
+
+export const reportService = {
+    summary: (year) => api.get(`/reports/summary?year=${year}`),
 };
 
 export const categoryService = {
