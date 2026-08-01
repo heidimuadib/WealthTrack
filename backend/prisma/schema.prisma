@@ -17,6 +17,10 @@ model User {
   // user who changes their Google address keeps their expenses.
   googleId  String?   @unique
   name      String?
+  // Path to the uploaded profile photo, relative to the API host
+  // (/uploads/avatars/...). Storing a path rather than an absolute URL means
+  // the same row works from a LAN address in dev and a real host in production.
+  avatarUrl String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   expenses  Expense[]

@@ -2,6 +2,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Only for taking a new profile photo. Picking an existing one goes
+         through the system photo picker, which needs no permission at all. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Without this the Play Store would hide the app from every device that
+         has no camera, over one optional screen. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { PieChart, Receipt, TrendingUp } from 'lucide-react-native';
 
+import Avatar from '../components/Avatar';
 import Card from '../components/Card';
 import DonutChart from '../components/DonutChart';
 import EmptyState from '../components/EmptyState';
@@ -161,9 +162,7 @@ const HomeScreen = ({ navigation }) => {
                     style={styles.avatar}
                     accessibilityLabel="Open your profile"
                 >
-                    <Text style={styles.avatarText}>
-                        {user?.name?.trim()?.charAt(0)?.toUpperCase() || 'U'}
-                    </Text>
+                    <Avatar user={user} size={44} />
                 </TouchableOpacity>
             </View>
 
@@ -345,18 +344,7 @@ const createStyles = ({ colors, typography }) =>
         marginBottom: 2,
     },
     avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: radius.round,
-        backgroundColor: colors.brand,
-        alignItems: 'center',
-        justifyContent: 'center',
         marginLeft: spacing.m,
-    },
-    avatarText: {
-        color: colors.onBrand,
-        fontSize: 17,
-        fontWeight: '700',
     },
     monthRow: {
         marginBottom: spacing.l,

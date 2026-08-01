@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 
 import Card from '../components/Card';
+import Avatar from '../components/Avatar';
 import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
 import { radius, spacing, useTheme } from '../theme';
@@ -50,8 +51,6 @@ const SettingsScreen = ({ navigation }) => {
         }
     };
 
-    const initial = user?.name?.trim()?.charAt(0)?.toUpperCase() || 'U';
-
     return (
         <View style={styles.container}>
             <ScreenHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
@@ -68,9 +67,7 @@ const SettingsScreen = ({ navigation }) => {
                         accessibilityRole="button"
                         accessibilityLabel={t('editProfile.title')}
                     >
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>{initial}</Text>
-                        </View>
+                        <Avatar user={user} size={52} style={styles.avatar} />
                         <View style={styles.profileText}>
                             <Text style={styles.name}>{user?.name || 'Your account'}</Text>
                             <Text style={typography.caption}>{user?.email || ''}</Text>
@@ -222,18 +219,7 @@ const createStyles = ({ colors, typography }) =>
         alignItems: 'center',
     },
     avatar: {
-        width: 52,
-        height: 52,
-        borderRadius: radius.round,
-        backgroundColor: colors.brand,
-        alignItems: 'center',
-        justifyContent: 'center',
         marginRight: spacing.l,
-    },
-    avatarText: {
-        color: colors.onBrand,
-        fontSize: 20,
-        fontWeight: '700',
     },
     profileText: {
         flex: 1,

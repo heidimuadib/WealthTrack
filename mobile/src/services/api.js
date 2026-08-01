@@ -16,7 +16,10 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         if (__DEV__) {
-            console.log(`[MOBILE REQ] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
+            // A FormData body prints as an unreadable blob of internal state,
+            // and an image's bytes are not worth a screen of log either way.
+            const body = config.data instanceof FormData ? '[multipart]' : config.data || '';
+            console.log(`[MOBILE REQ] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, body);
         }
         const token = useAuthStore.getState().token;
         if (token) {
@@ -65,6 +68,16 @@ export const authService = {
     google: (idToken) => api.post('/auth/google', { idToken }),
     me: () => api.get('/auth/me'),
     updateProfile: (data) => api.put('/auth/profile', data),
+    // The boundary has to be chosen by the HTTP layer, so the Content-Type set
+    // on the instance is dropped here rather than overridden.
+    uploadAvatar: (form) =>
+        api.post('/auth/avatar', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            // A photo over a phone's uplink needs more room than the 15s a
+            // JSON call gets.
+            timeout: 60000,
+        }),
+    removeAvatar: () => api.delete('/auth/avatar'),
 };
 
 export const expenseService = {

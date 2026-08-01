@@ -136,6 +136,23 @@ const en = {
     'editProfile.save': 'Save changes',
     'editProfile.saved': 'Profile updated',
     'editProfile.couldNotSave': 'Could not save',
+    'editProfile.changePhoto': 'Change photo',
+    'editProfile.photoSheetTitle': 'Profile photo',
+    'editProfile.chooseFromGallery': 'Choose from gallery',
+    'editProfile.takePhoto': 'Take a photo',
+    'editProfile.removePhoto': 'Remove photo',
+    'editProfile.removePhotoTitle': 'Remove your photo?',
+    'editProfile.removePhotoMsg': 'Your initial will be shown instead.',
+    'editProfile.photoUpdated': 'Photo updated',
+    'editProfile.photoRemoved': 'Photo removed',
+    'editProfile.photoFailed': 'Could not update your photo',
+    'editProfile.pickerFailed': 'That image could not be opened.',
+    'editProfile.cameraBlockedTitle': 'Camera permission needed',
+    'editProfile.cameraBlockedMsg':
+        'Allow camera access to take a new photo, or choose one from your gallery instead.',
+
+    // Shared
+    'common.cancel': 'Cancel',
 
     // Login
     'login.welcomeBack': 'Welcome back. Let’s check your spending.',
@@ -293,6 +310,22 @@ const fil = {
     'editProfile.save': 'I-save ang mga pagbabago',
     'editProfile.saved': 'Na-update ang profile',
     'editProfile.couldNotSave': 'Hindi ma-save',
+    'editProfile.changePhoto': 'Palitan ang larawan',
+    'editProfile.photoSheetTitle': 'Larawan sa profile',
+    'editProfile.chooseFromGallery': 'Pumili mula sa gallery',
+    'editProfile.takePhoto': 'Kumuha ng larawan',
+    'editProfile.removePhoto': 'Alisin ang larawan',
+    'editProfile.removePhotoTitle': 'Alisin ang larawan mo?',
+    'editProfile.removePhotoMsg': 'Ang unang letra ng pangalan mo ang lalabas.',
+    'editProfile.photoUpdated': 'Na-update ang larawan',
+    'editProfile.photoRemoved': 'Naalis ang larawan',
+    'editProfile.photoFailed': 'Hindi ma-update ang larawan',
+    'editProfile.pickerFailed': 'Hindi mabuksan ang larawang iyon.',
+    'editProfile.cameraBlockedTitle': 'Kailangan ng permiso sa camera',
+    'editProfile.cameraBlockedMsg':
+        'Payagan ang camera para makakuha ng bagong larawan, o pumili na lang mula sa gallery.',
+
+    'common.cancel': 'Kanselahin',
 
     'login.welcomeBack': 'Maligayang pagbabalik. Silipin natin ang gastos mo.',
     'login.startTracking': 'Simulan ang pagsubaybay sa iyong pera.',
@@ -447,6 +480,22 @@ const ceb = {
     'editProfile.save': 'I-save ang mga kausaban',
     'editProfile.saved': 'Na-update ang profile',
     'editProfile.couldNotSave': 'Wala ma-save',
+    'editProfile.changePhoto': 'Ilisan ang litrato',
+    'editProfile.photoSheetTitle': 'Litrato sa profile',
+    'editProfile.chooseFromGallery': 'Pagpili gikan sa gallery',
+    'editProfile.takePhoto': 'Pagkuha og litrato',
+    'editProfile.removePhoto': 'Tangtangon ang litrato',
+    'editProfile.removePhotoTitle': 'Tangtangon ang imong litrato?',
+    'editProfile.removePhotoMsg': 'Ang unang letra sa imong ngalan ang makita.',
+    'editProfile.photoUpdated': 'Na-update ang litrato',
+    'editProfile.photoRemoved': 'Natangtang ang litrato',
+    'editProfile.photoFailed': 'Wala ma-update ang litrato',
+    'editProfile.pickerFailed': 'Wala maabli kana nga litrato.',
+    'editProfile.cameraBlockedTitle': 'Kinahanglan ang pagtugot sa camera',
+    'editProfile.cameraBlockedMsg':
+        'Tugoti ang camera aron makakuha og bag-ong litrato, o pagpili na lang gikan sa gallery.',
+
+    'common.cancel': 'Kanselahon',
 
     'login.welcomeBack': 'Maayong pagbalik. Atong tan-awon ang imong gasto.',
     'login.startTracking': 'Sugdi ang pagbantay asa padulong ang imong kwarta.',

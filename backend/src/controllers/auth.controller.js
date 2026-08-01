@@ -2,6 +2,18 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../lib/prisma');
+const { avatarPublicUrl, deleteAvatarFile } = require('../middleware/upload');
+
+// Everything the app is allowed to know about an account, in one place so a
+// new profile field cannot reach one route's response and miss another's.
+const PUBLIC_USER = { id: true, email: true, name: true, avatarUrl: true };
+
+const toPublicUser = (user) => ({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+});
 
 // Absent when Google sign-in has not been configured. The route below answers
 // 503 in that case rather than failing in a way the app has to guess at.
@@ -62,7 +74,7 @@ const register = async (req, res) => {
         });
 
         res.status(201).json({
-            user: { id: user.id, email: user.email, name: user.name },
+            user: toPublicUser(user),
             token: signToken(user),
         });
     } catch (error) {
@@ -102,7 +114,7 @@ const login = async (req, res) => {
         }
 
         res.json({
-            user: { id: user.id, email: user.email, name: user.name },
+            user: toPublicUser(user),
             token: signToken(user),
         });
     } catch (error) {
@@ -176,7 +188,7 @@ const google = async (req, res) => {
         }
 
         res.json({
-            user: { id: user.id, email: user.email, name: user.name },
+            user: toPublicUser(user),
             token: signToken(user),
         });
     } catch (error) {
@@ -191,7 +203,7 @@ const me = async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.user.id },
-            select: { id: true, email: true, name: true },
+            select: PUBLIC_USER,
         });
 
         // Token still parses, but the account behind it is gone.
@@ -224,7 +236,7 @@ const updateProfile = async (req, res) => {
         const user = await prisma.user.update({
             where: { id: req.user.id },
             data: { name: trimmed },
-            select: { id: true, email: true, name: true },
+            select: PUBLIC_USER,
         });
 
         res.json({ user });
@@ -238,4 +250,67 @@ const updateProfile = async (req, res) => {
     }
 };
 
-module.exports = { register, login, google, me, updateProfile };
+// The file is already on disk by the time this runs — multer streams it there
+// before the route body executes.
+const setAvatar = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image received' });
+    }
+
+    const avatarUrl = avatarPublicUrl(req.file.filename);
+
+    try {
+        const previous = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { avatarUrl: true },
+        });
+
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { avatarUrl },
+            select: PUBLIC_USER,
+        });
+
+        // Only once the row points at the replacement. The other order leaves
+        // an account pointing at a photo that is no longer on disk.
+        deleteAvatarFile(previous?.avatarUrl);
+
+        res.json({ user });
+    } catch (error) {
+        // The row still points at the old photo, so this upload is an orphan.
+        deleteAvatarFile(avatarUrl);
+
+        if (error.code === 'P2025') {
+            return res.status(401).json({ error: 'Account no longer exists' });
+        }
+        console.error(error);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
+const removeAvatar = async (req, res) => {
+    try {
+        const previous = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { avatarUrl: true },
+        });
+
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { avatarUrl: null },
+            select: PUBLIC_USER,
+        });
+
+        deleteAvatarFile(previous?.avatarUrl);
+
+        res.json({ user });
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(401).json({ error: 'Account no longer exists' });
+        }
+        console.error(error);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
+module.exports = { register, login, google, me, updateProfile, setAvatar, removeAvatar };

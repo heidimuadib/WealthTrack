@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -37,6 +38,20 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Content-Length', 'Content-Type'],
 }));
+// Profile photos are served straight from disk, ahead of the logger and the
+// rate limiter: they are static bytes rather than API calls, so rendering an
+// avatar should not spend the caller's request budget or a screen of log. The
+// URLs are unguessable rather than secret — the same trade as serving avatars
+// from a CDN.
+app.use(
+    '/uploads',
+    express.static(path.join(__dirname, '..', 'uploads'), {
+        maxAge: '7d',
+        index: false,
+        dotfiles: 'ignore',
+    })
+);
+
 app.use(express.json({ limit: '100kb' }));
 
 // Anything here would otherwise be written to the terminal, and scrolled past

@@ -1,6 +1,15 @@
 const express = require('express');
-const { register, login, google, me, updateProfile } = require('../controllers/auth.controller');
+const {
+    register,
+    login,
+    google,
+    me,
+    updateProfile,
+    setAvatar,
+    removeAvatar,
+} = require('../controllers/auth.controller');
 const auth = require('../middleware/auth');
+const { uploadAvatar } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -12,5 +21,10 @@ router.post('/google', google);
 // router.use() — register/login/google must stay open.
 router.get('/me', auth, me);
 router.put('/profile', auth, updateProfile);
+
+// auth runs before the upload so the filename can be keyed to the account, and
+// so an unauthenticated request is turned away before anything reaches disk.
+router.post('/avatar', auth, uploadAvatar, setAvatar);
+router.delete('/avatar', auth, removeAvatar);
 
 module.exports = router;

@@ -39,6 +39,9 @@ dist/
 .next/
 coverage/
 
+# Uploaded profile photos — user content, recreated at runtime, never source.
+uploads/
+
 # Android
 *.apk
 *.aab
