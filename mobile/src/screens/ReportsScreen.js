@@ -16,6 +16,7 @@ import ErrorState from '../components/ErrorState';
 import ScreenHeader from '../components/ScreenHeader';
 import YearSelector from '../components/YearSelector';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { useReportSummary } from '../hooks/useReports';
 import { formatCompact, formatCurrency, monthName, monthNameShort } from '../utils/format';
 
@@ -24,6 +25,7 @@ const CHART_HEIGHT = 132;
 const ReportsScreen = ({ navigation }) => {
     const theme = useTheme();
     const { colors } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const now = new Date();
@@ -65,8 +67,8 @@ const ReportsScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <ScreenHeader
-                title="Reports"
-                subtitle="Your year at a glance"
+                title={t('reports.title')}
+                subtitle={t('reports.subtitle')}
                 onBack={() => navigation.goBack()}
             />
 
@@ -94,28 +96,28 @@ const ReportsScreen = ({ navigation }) => {
                     <Card>
                         <EmptyState
                             icon={BarChart3}
-                            title={`Nothing recorded in ${year}`}
-                            message="Expenses you log will roll up here by month and category."
+                            title={t('reports.emptyTitle', { year })}
+                            message={t('reports.emptyMsg')}
                         />
                     </Card>
                 ) : (
                     <>
                         <View style={styles.statRow}>
                             <Card style={styles.statCard}>
-                                <Text style={styles.statLabel}>Spent in {year}</Text>
+                                <Text style={styles.statLabel}>{t('reports.spentIn', { year })}</Text>
                                 <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
                                     {formatCompact(total)}
                                 </Text>
                             </Card>
                             <Card style={[styles.statCard, styles.statCardLast]}>
-                                <Text style={styles.statLabel}>Monthly average</Text>
+                                <Text style={styles.statLabel}>{t('reports.monthlyAverage')}</Text>
                                 <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
                                     {formatCompact(monthlyAverage)}
                                 </Text>
                             </Card>
                         </View>
 
-                        <Text style={styles.sectionTitle}>By month</Text>
+                        <Text style={styles.sectionTitle}>{t('reports.byMonth')}</Text>
                         <Card>
                             <View style={styles.chart}>
                                 {months.map((item) => {
@@ -173,7 +175,7 @@ const ReportsScreen = ({ navigation }) => {
                             ) : null}
                         </Card>
 
-                        <Text style={styles.sectionTitle}>By category</Text>
+                        <Text style={styles.sectionTitle}>{t('reports.byCategory')}</Text>
                         <Card>
                             {report.categories.map((item, index) => (
                                 <View

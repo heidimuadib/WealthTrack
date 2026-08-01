@@ -14,6 +14,7 @@ import BrandMark from '../components/BrandMark';
 import GoogleLogo from '../components/GoogleLogo';
 import PasswordStrength from '../components/PasswordStrength';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { authService } from '../services/api';
 import { signInWithGoogle, GOOGLE_CANCELLED } from '../services/googleAuth';
 import useAuthStore from '../store/authStore';
@@ -22,6 +23,7 @@ import { errorMessage } from '../utils/error';
 const LoginScreen = () => {
     const theme = useTheme();
     const { colors } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const [isLogin, setIsLogin] = useState(true);
@@ -51,12 +53,12 @@ const LoginScreen = () => {
         const trimmedEmail = email.trim();
 
         if (!trimmedEmail || !password || (!isLogin && !name.trim())) {
-            setError('Please fill in all fields.');
+            setError(t('login.fillAll'));
             return;
         }
 
         if (!isLogin && password.length < 8) {
-            setError('Password must be at least 8 characters.');
+            setError(t('login.pw8'));
             return;
         }
 
@@ -115,16 +117,14 @@ const LoginScreen = () => {
                     </View>
                     <Text style={styles.wordmark}>WealthTrack</Text>
                     <Text style={styles.tagline}>
-                        {isLogin
-                            ? 'Welcome back. Let’s check your spending.'
-                            : 'Start tracking where your money goes.'}
+                        {isLogin ? t('login.welcomeBack') : t('login.startTracking')}
                     </Text>
                 </View>
 
                 <View style={styles.card}>
                     {!isLogin ? (
                         <Input
-                            label="Name"
+                            label={t('login.name')}
                             placeholder="Juan Dela Cruz"
                             value={name}
                             onChangeText={setName}
@@ -139,7 +139,7 @@ const LoginScreen = () => {
 
                     <Input
                         inputRef={emailRef}
-                        label="Email"
+                        label={t('login.email')}
                         placeholder="juan@example.com"
                         value={email}
                         onChangeText={setEmail}
@@ -154,8 +154,8 @@ const LoginScreen = () => {
 
                     <Input
                         inputRef={passwordRef}
-                        label="Password"
-                        placeholder={isLogin ? 'Your password' : 'At least 8 characters'}
+                        label={t('login.password')}
+                        placeholder={isLogin ? t('login.yourPassword') : t('login.atLeast8')}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -175,7 +175,7 @@ const LoginScreen = () => {
                     ) : null}
 
                     <Button
-                        title={isLogin ? 'Log in' : 'Create account'}
+                        title={isLogin ? t('login.logIn') : t('login.createAccount')}
                         onPress={handleSubmit}
                         loading={loading}
                         disabled={googleLoading}
@@ -183,7 +183,7 @@ const LoginScreen = () => {
 
                     <View style={styles.divider}>
                         <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>or</Text>
+                        <Text style={styles.dividerText}>{t('login.or')}</Text>
                         <View style={styles.dividerLine} />
                     </View>
 
@@ -198,9 +198,9 @@ const LoginScreen = () => {
 
                     <TouchableOpacity onPress={switchMode} style={styles.switch}>
                         <Text style={styles.switchText}>
-                            {isLogin ? 'New here? ' : 'Already have an account? '}
+                            {isLogin ? t('login.newHere') : t('login.haveAccount')}
                             <Text style={styles.switchLink}>
-                                {isLogin ? 'Create an account' : 'Log in'}
+                                {isLogin ? t('login.createLink') : t('login.logIn')}
                             </Text>
                         </Text>
                     </TouchableOpacity>

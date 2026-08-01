@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { formatMonthYear, isFutureMonth, shiftMonth } from '../utils/format';
 
 // Previously every screen was hard-wired to the current month, which made past
@@ -14,6 +15,9 @@ import { formatMonthYear, isFutureMonth, shiftMonth } from '../utils/format';
 const MonthSelector = ({ value, onChange, tone = 'surface' }) => {
     const theme = useTheme();
     const { colors } = theme;
+    // Subscribes this component to language changes: formatMonthYear reads the
+    // active language's month names at render time.
+    useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const onBrand = tone === 'brand' || tone === 'dark';

@@ -16,6 +16,7 @@ import LoginScreen from '../screens/LoginScreen';
 import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import useAuthStore from '../store/authStore';
 import { restoreSession } from '../services/session';
 
@@ -44,6 +45,7 @@ const buildNavTheme = ({ colors, isDark }) => {
 const MainTabs = () => {
     const theme = useTheme();
     const { colors } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     return (
@@ -64,12 +66,18 @@ const MainTabs = () => {
         <Tab.Screen
             name="Home"
             component={HomeScreen}
-            options={{ tabBarIcon: ({ color }) => <Home color={color} size={21} /> }}
+            options={{
+                tabBarLabel: t('tabs.home'),
+                tabBarIcon: ({ color }) => <Home color={color} size={21} />,
+            }}
         />
         <Tab.Screen
             name="Expenses"
             component={ExpensesScreen}
-            options={{ tabBarIcon: ({ color }) => <List color={color} size={21} /> }}
+            options={{
+                tabBarLabel: t('tabs.expenses'),
+                tabBarIcon: ({ color }) => <List color={color} size={21} />,
+            }}
         />
         <Tab.Screen
             name="Add"
@@ -86,12 +94,18 @@ const MainTabs = () => {
         <Tab.Screen
             name="Budget"
             component={BudgetScreen}
-            options={{ tabBarIcon: ({ color }) => <PieChart color={color} size={21} /> }}
+            options={{
+                tabBarLabel: t('tabs.budget'),
+                tabBarIcon: ({ color }) => <PieChart color={color} size={21} />,
+            }}
         />
         <Tab.Screen
             name="Settings"
             component={SettingsScreen}
-            options={{ tabBarIcon: ({ color }) => <Settings color={color} size={21} /> }}
+            options={{
+                tabBarLabel: t('tabs.settings'),
+                tabBarIcon: ({ color }) => <Settings color={color} size={21} />,
+            }}
         />
     </Tab.Navigator>
     );

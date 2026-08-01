@@ -1,3 +1,9 @@
+// Month names and day labels follow the app language. These read the i18n
+// module's current language directly rather than through a hook, because they
+// are plain functions — the components that render their output are context
+// consumers, so a language change re-renders them and they read fresh names.
+import { getMonths, getMonthsShort, translate } from '../i18n';
+
 const PESO = '₱';
 
 // Intl is unreliable across Android JS engines, so group digits by hand.
@@ -38,15 +44,8 @@ export const splitCurrency = (value) => {
     };
 };
 
-const MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-const MONTHS_SHORT = MONTHS.map((m) => m.slice(0, 3));
-
-export const monthName = (month) => MONTHS[month - 1] || '';
-export const monthNameShort = (month) => MONTHS_SHORT[month - 1] || '';
+export const monthName = (month) => getMonths()[month - 1] || '';
+export const monthNameShort = (month) => getMonthsShort()[month - 1] || '';
 
 export const formatMonthYear = (month, year) => `${monthName(month)} ${year}`;
 
@@ -55,7 +54,7 @@ export const formatDate = (value) => {
     if (Number.isNaN(date.getTime())) {
         return '';
     }
-    return `${MONTHS_SHORT[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    return `${getMonthsShort()[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 };
 
 export const formatDayLabel = (value) => {
@@ -71,13 +70,13 @@ export const formatDayLabel = (value) => {
         a.getFullYear() === b.getFullYear();
 
     if (isSameDay(date, today)) {
-        return 'Today';
+        return translate('dates.today');
     }
 
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     if (isSameDay(date, yesterday)) {
-        return 'Yesterday';
+        return translate('dates.yesterday');
     }
 
     return formatDate(value);

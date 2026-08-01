@@ -18,6 +18,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import SpendSummaryCard from '../components/SpendSummaryCard';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
@@ -37,6 +38,7 @@ const NO_EXPENSES = [];
 const HomeScreen = ({ navigation }) => {
     const theme = useTheme();
     const { colors, typography, categoryPalette } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const [period, setPeriod] = useState(currentMonthYear);
@@ -158,9 +160,9 @@ const HomeScreen = ({ navigation }) => {
             <View style={styles.header}>
                 <View style={styles.headerText}>
                     <Text style={styles.greeting}>
-                        Kumusta{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
+                        {t('home.greeting')}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
                     </Text>
-                    <Text style={typography.caption}>Here’s where your money went.</Text>
+                    <Text style={typography.caption}>{t('home.tagline')}</Text>
                 </View>
 
                 <TouchableOpacity
@@ -193,20 +195,20 @@ const HomeScreen = ({ navigation }) => {
                 onPressBudget={() => navigation.navigate('Budget')}
             />
 
-            <Text style={styles.sectionTitle}>Spending breakdown</Text>
+            <Text style={styles.sectionTitle}>{t('home.breakdown')}</Text>
             <Card>
                 {breakdown.length === 0 ? (
                     <EmptyState
                         icon={PieChart}
-                        title="Nothing to break down yet"
-                        message="Add an expense and your category split will appear here."
-                        actionLabel="Add expense"
+                        title={t('home.emptyBreakdownTitle')}
+                        message={t('home.emptyBreakdownMsg')}
+                        actionLabel={t('home.addExpense')}
                         onAction={() => navigation.navigate('Add')}
                     />
                 ) : (
                     <>
                         <View style={styles.chartWrap}>
-                            <DonutChart data={breakdown} caption="Spent" />
+                            <DonutChart data={breakdown} caption={t('home.spentCaption')} />
                         </View>
 
                         <View style={styles.legend}>
@@ -230,10 +232,10 @@ const HomeScreen = ({ navigation }) => {
             </Card>
 
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Recent</Text>
+                <Text style={styles.sectionTitle}>{t('home.recent')}</Text>
                 {expenses.length > 0 ? (
                     <TouchableOpacity onPress={() => navigation.navigate('Expenses')}>
-                        <Text style={styles.seeAll}>See all</Text>
+                        <Text style={styles.seeAll}>{t('home.seeAll')}</Text>
                     </TouchableOpacity>
                 ) : null}
             </View>
@@ -242,9 +244,9 @@ const HomeScreen = ({ navigation }) => {
                 <Card>
                     <EmptyState
                         icon={Receipt}
-                        title="No expenses this month"
-                        message="Once you log something, it will show up right here."
-                        actionLabel="Add your first expense"
+                        title={t('home.emptyMonthTitle')}
+                        message={t('home.emptyMonthMsg')}
+                        actionLabel={t('home.addFirst')}
                         onAction={() => navigation.navigate('Add')}
                     />
                 </Card>
@@ -265,7 +267,7 @@ const HomeScreen = ({ navigation }) => {
                             />
                             <View style={styles.rowMain}>
                                 <Text style={styles.rowTitle} numberOfLines={1}>
-                                    {expense.notes || expense.category?.name || 'Expense'}
+                                    {expense.notes || expense.category?.name || t('home.expenseFallback')}
                                 </Text>
                                 <Text style={styles.rowMeta}>
                                     {expense.category?.name} · {formatDayLabel(expense.date)}
@@ -283,8 +285,10 @@ const HomeScreen = ({ navigation }) => {
                 <View style={styles.insight}>
                     <TrendingUp color={colors.brand} size={16} />
                     <Text style={styles.insightText}>
-                        <Text style={styles.insightStrong}>{breakdown[0].label}</Text> is your
-                        biggest category at {Math.round(breakdown[0].share * 100)}% of spending.
+                        {t('home.insight', {
+                            category: breakdown[0].label,
+                            percent: Math.round(breakdown[0].share * 100),
+                        })}
                     </Text>
                 </View>
             ) : null}

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 
 // Advice, not a gate: the API enforces the eight-character minimum, and a rule
 // the user cannot satisfy on their own password manager's output would only
@@ -24,6 +25,7 @@ const score = (password) => {
 const PasswordStrength = ({ password }) => {
     const theme = useTheme();
     const { colors } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     if (!password) {
@@ -34,9 +36,9 @@ const PasswordStrength = ({ password }) => {
     const level = points <= 1 ? 0 : points <= 3 ? 1 : 2;
 
     const { label, color } = [
-        { label: 'Weak', color: colors.danger },
-        { label: 'Fair', color: colors.warning },
-        { label: 'Strong', color: colors.success },
+        { label: t('login.weak'), color: colors.danger },
+        { label: t('login.fair'), color: colors.warning },
+        { label: t('login.strong'), color: colors.success },
     ][level];
 
     return (

@@ -23,6 +23,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBudget, useSetBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
@@ -31,6 +32,7 @@ import { currentMonthYear, formatCurrency, formatCompact } from '../utils/format
 const BudgetScreen = () => {
     const theme = useTheme();
     const { colors, balanceGradient, dangerGradient, gradientAngles } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const [period, setPeriod] = useState(currentMonthYear);
@@ -82,8 +84,8 @@ const BudgetScreen = () => {
 
         if (!Number.isFinite(parsed) || parsed < 0) {
             alert({
-                title: 'Invalid amount',
-                message: 'Enter a number of zero or more.',
+                title: t('budget.invalidTitle'),
+                message: t('budget.invalidMsg'),
             });
             return;
         }
@@ -95,11 +97,11 @@ const BudgetScreen = () => {
                 year: period.year,
             });
             // A snackbar rather than a dialog — success shouldn't need a tap.
-            notify({ message: `Budget set to ${formatCurrency(parsed)}` });
+            notify({ message: t('budget.saved', { amount: formatCurrency(parsed) }) });
         } catch (err) {
             // The API returns a message naming the offending field, which is
             // more use than a blanket "please try again".
-            alert({ title: 'Could not save', message: errorMessage(err) });
+            alert({ title: t('budget.couldNotSave'), message: errorMessage(err) });
         }
     };
 
@@ -128,7 +130,7 @@ const BudgetScreen = () => {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-            <ScreenHeader title="Budget" subtitle="Monthly limit" />
+            <ScreenHeader title={t('budget.title')} subtitle={t('budget.subtitle')} />
 
             {fetching && !hasData ? (
                 <ActivityIndicator color={colors.brand} style={styles.loading} />

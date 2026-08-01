@@ -4,6 +4,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { TrendingUp, TrendingDown, Minus, Plus } from 'lucide-react-native';
 
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import {
     currentMonthYear,
     formatCompact,
@@ -21,6 +22,7 @@ const PACE_TOLERANCE = 0.08;
 const SpendSummaryCard = ({ period, total, budget, previousTotal, onPressBudget }) => {
     const theme = useTheme();
     const { colors } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const hasBudget = budget > 0;
@@ -49,17 +51,17 @@ const SpendSummaryCard = ({ period, total, budget, previousTotal, onPressBudget 
             return null;
         }
         if (total === 0) {
-            return { direction: 'flat', text: 'Nothing spent yet this month' };
+            return { direction: 'flat', text: t('card.nothingYet') };
         }
         if (previousTotal <= 0) {
-            return { direction: 'up', text: 'Nothing logged last month' };
+            return { direction: 'up', text: t('card.nothingLastMonth') };
         }
 
         const change = (total - previousTotal) / previousTotal;
         const percent = Math.abs(Math.round(change * 100));
 
         if (percent === 0) {
-            return { direction: 'flat', text: 'About the same as last month' };
+            return { direction: 'flat', text: t('card.aboutSame') };
         }
         // Past a doubling — or a near-total drop — the percentage stops being
         // the clearer number. "100% less" also reads as nothing at all when a
@@ -67,27 +69,29 @@ const SpendSummaryCard = ({ period, total, budget, previousTotal, onPressBudget 
         if (percent >= 100) {
             return {
                 direction: change > 0 ? 'up' : 'down',
-                text: `${change > 0 ? 'Up' : 'Down'} from ${formatCompact(previousTotal)} last month`,
+                text: t(change > 0 ? 'card.upFrom' : 'card.downFrom', {
+                    amount: formatCompact(previousTotal),
+                }),
             };
         }
         return {
             direction: change > 0 ? 'up' : 'down',
-            text: `${percent}% ${change > 0 ? 'more' : 'less'} than last month`,
+            text: t(change > 0 ? 'card.moreThan' : 'card.lessThan', { percent }),
         };
-    }, [total, previousTotal]);
+    }, [total, previousTotal, t]);
 
     const status = useMemo(() => {
         if (!hasBudget) {
             return null;
         }
         if (isOver) {
-            return 'Over budget';
+            return t('card.overBudget');
         }
         if (pace != null && progress > pace + PACE_TOLERANCE) {
-            return 'Ahead of pace';
+            return t('card.aheadOfPace');
         }
-        return 'On track';
-    }, [hasBudget, isOver, pace, progress]);
+        return t('card.onTrack');
+    }, [hasBudget, isOver, pace, progress, t]);
 
     // Animated on change rather than on mount only, so switching months slides
     // the meter to its new value instead of cutting to it.
@@ -109,8 +113,8 @@ const SpendSummaryCard = ({ period, total, budget, previousTotal, onPressBudget 
     });
 
     const label = isSamePeriod(period, currentMonthYear())
-        ? 'Spent this month'
-        : `Spent in ${formatMonthYear(period.month, period.year)}`;
+        ? t('card.spentThisMonth')
+        : t('card.spentIn', { period: formatMonthYear(period.month, period.year) });
 
     const DeltaIcon =
         delta?.direction === 'up' ? TrendingUp : delta?.direction === 'down' ? TrendingDown : Minus;
@@ -204,16 +208,24 @@ const SpendSummaryCard = ({ period, total, budget, previousTotal, onPressBudget 
                         <View style={styles.footer}>
                             <Text style={styles.footerLeft}>
                                 {isOver
-                                    ? `${formatCompact(Math.abs(remaining))} over ${formatCompact(budget)}`
-                                    : `${formatCompact(remaining)} left of ${formatCompact(budget)}`}
+                                    ? t('card.overBy', {
+                                          over: formatCompact(Math.abs(remaining)),
+                                          budget: formatCompact(budget),
+                                      })
+                                    : t('card.leftOf', {
+                                          left: formatCompact(remaining),
+                                          budget: formatCompact(budget),
+                                      })}
                             </Text>
-                            <Text style={styles.footerRight}>{percentUsed}% used</Text>
+                            <Text style={styles.footerRight}>
+                                {t('card.percentUsed', { percent: percentUsed })}
+                            </Text>
                         </View>
                     </>
                 ) : (
                     <View style={styles.cta}>
                         <Plus color={colors.onBrand} size={14} />
-                        <Text style={styles.ctaText}>Set a budget for this month</Text>
+                        <Text style={styles.ctaText}>{t('card.setBudget')}</Text>
                     </View>
                 )}
             </LinearGradient>

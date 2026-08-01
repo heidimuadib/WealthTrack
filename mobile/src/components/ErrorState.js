@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CloudOff, TriangleAlert } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { isOffline, errorMessage, errorTitle } from '../utils/error';
 import Button from './Button';
 
@@ -11,6 +12,7 @@ import Button from './Button';
 // one says "try again".
 const ErrorState = ({ error, onRetry, retrying = false }) => {
     const theme = useTheme();
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const Icon = isOffline(error) ? CloudOff : TriangleAlert;
@@ -26,7 +28,7 @@ const ErrorState = ({ error, onRetry, retrying = false }) => {
 
             {onRetry ? (
                 <Button
-                    title="Try again"
+                    title={t('errors.tryAgain')}
                     onPress={onRetry}
                     loading={retrying}
                     variant="secondary"

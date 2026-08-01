@@ -15,14 +15,15 @@ import Card from '../components/Card';
 import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage, LANGUAGES } from '../i18n';
 import useAuthStore from '../store/authStore';
 
 // "System" first, because following the device is the default and the option
-// most people want.
+// most people want. Labels are translation keys, resolved at render.
 const THEME_OPTIONS = [
-    { value: 'system', label: 'System', icon: Smartphone },
-    { value: 'light', label: 'Light', icon: Sun },
-    { value: 'dark', label: 'Dark', icon: Moon },
+    { value: 'system', labelKey: 'settings.system', icon: Smartphone },
+    { value: 'light', labelKey: 'settings.light', icon: Sun },
+    { value: 'dark', labelKey: 'settings.dark', icon: Moon },
 ];
 
 const SettingsScreen = ({ navigation }) => {
@@ -32,14 +33,15 @@ const SettingsScreen = ({ navigation }) => {
 
     const logout = useAuthStore((state) => state.logout);
     const user = useAuthStore((state) => state.user);
+    const { t, language, setLanguage } = useLanguage();
 
     const { confirm } = useFeedback();
 
     const handleLogout = async () => {
         const confirmed = await confirm({
-            title: 'Log out?',
-            message: 'You will need to sign in again.',
-            confirmLabel: 'Log out',
+            title: t('settings.logoutTitle'),
+            message: t('settings.logoutMsg'),
+            confirmLabel: t('settings.logout'),
             destructive: true,
         });
 
@@ -52,7 +54,7 @@ const SettingsScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScreenHeader title="Settings" subtitle="Your account" />
+            <ScreenHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
             <ScrollView
                 contentContainerStyle={styles.content}
@@ -70,7 +72,7 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </Card>
 
-                <Text style={styles.sectionTitle}>Manage</Text>
+                <Text style={styles.sectionTitle}>{t('settings.manage')}</Text>
                 <Card padded={false}>
                     <TouchableOpacity
                         style={styles.row}
@@ -81,8 +83,8 @@ const SettingsScreen = ({ navigation }) => {
                             <BarChart3 color={colors.brand} size={18} />
                         </View>
                         <View style={styles.rowMain}>
-                            <Text style={styles.rowTitle}>Reports</Text>
-                            <Text style={styles.rowMeta}>Spending by month and category</Text>
+                            <Text style={styles.rowTitle}>{t('settings.reports')}</Text>
+                            <Text style={styles.rowMeta}>{t('settings.reportsMeta')}</Text>
                         </View>
                         <ChevronRight color={colors.textMuted} size={18} />
                     </TouchableOpacity>
@@ -96,14 +98,46 @@ const SettingsScreen = ({ navigation }) => {
                             <Tag color={colors.brand} size={18} />
                         </View>
                         <View style={styles.rowMain}>
-                            <Text style={styles.rowTitle}>Categories</Text>
-                            <Text style={styles.rowMeta}>Add, rename, or remove categories</Text>
+                            <Text style={styles.rowTitle}>{t('settings.categories')}</Text>
+                            <Text style={styles.rowMeta}>{t('settings.categoriesMeta')}</Text>
                         </View>
                         <ChevronRight color={colors.textMuted} size={18} />
                     </TouchableOpacity>
                 </Card>
 
-                <Text style={styles.sectionTitle}>Appearance</Text>
+                <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
+                <Card>
+                    <View style={styles.segmented}>
+                        {LANGUAGES.map((option) => {
+                            const active = language === option.code;
+
+                            return (
+                                <TouchableOpacity
+                                    key={option.code}
+                                    style={[styles.segment, active && styles.segmentActive]}
+                                    onPress={() => setLanguage(option.code)}
+                                    activeOpacity={0.75}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: active }}
+                                    accessibilityLabel={option.label}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.segmentLabel,
+                                            styles.segmentLabelBare,
+                                            active && styles.segmentLabelActive,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    <Text style={styles.help}>{t('settings.languageMeta')}</Text>
+                </Card>
+
+                <Text style={styles.sectionTitle}>{t('settings.appearance')}</Text>
                 <Card>
                     <View style={styles.segmented}>
                         {THEME_OPTIONS.map((option) => {
@@ -118,7 +152,7 @@ const SettingsScreen = ({ navigation }) => {
                                     activeOpacity={0.75}
                                     accessibilityRole="button"
                                     accessibilityState={{ selected: active }}
-                                    accessibilityLabel={`${option.label} appearance`}
+                                    accessibilityLabel={t(option.labelKey)}
                                 >
                                     <Icon
                                         color={active ? colors.brand : colors.textMuted}
@@ -130,7 +164,7 @@ const SettingsScreen = ({ navigation }) => {
                                             active && styles.segmentLabelActive,
                                         ]}
                                     >
-                                        {option.label}
+                                        {t(option.labelKey)}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -138,19 +172,18 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                     <Text style={styles.help}>
                         {theme.preference === 'system'
-                            ? 'Following your device setting.'
-                            : `Always ${theme.isDark ? 'dark' : 'light'}, whatever the device does.`}
+                            ? t('settings.followingDevice')
+                            : theme.isDark
+                              ? t('settings.alwaysDark')
+                              : t('settings.alwaysLight')}
                     </Text>
                 </Card>
 
-                <Text style={styles.sectionTitle}>About</Text>
+                <Text style={styles.sectionTitle}>{t('settings.about')}</Text>
                 <Card>
                     <View style={styles.aboutRow}>
                         <Info color={colors.textMuted} size={16} />
-                        <Text style={styles.aboutText}>
-                            WealthTrack · version 0.1.0{'\n'}
-                            Amounts are shown in Philippine pesos.
-                        </Text>
+                        <Text style={styles.aboutText}>{t('settings.aboutText')}</Text>
                     </View>
                 </Card>
 
@@ -160,7 +193,7 @@ const SettingsScreen = ({ navigation }) => {
                     activeOpacity={0.7}
                 >
                     <LogOut color={colors.danger} size={18} />
-                    <Text style={styles.logoutText}>Log out</Text>
+                    <Text style={styles.logoutText}>{t('settings.logout')}</Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>
@@ -262,6 +295,10 @@ const createStyles = ({ colors, typography }) =>
         fontSize: 13,
         fontWeight: '600',
         color: colors.textMuted,
+    },
+    // Language segments carry no icon, so the icon gap goes too.
+    segmentLabelBare: {
+        marginLeft: 0,
     },
     segmentLabelActive: {
         color: colors.brand,

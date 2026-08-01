@@ -20,6 +20,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { useExpenses, useDeleteExpense } from '../hooks/useExpenses';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { queryKeys } from '../lib/queryKeys';
@@ -32,6 +33,7 @@ const NO_EXPENSES = [];
 const ExpensesScreen = ({ navigation }) => {
     const theme = useTheme();
     const { colors, typography } = theme;
+    const { t } = useLanguage();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const [period, setPeriod] = useState(currentMonthYear);
@@ -69,12 +71,12 @@ const ExpensesScreen = ({ navigation }) => {
         );
 
     const handleDelete = async (expense) => {
-        const label = expense.notes || expense.category?.name || 'This expense';
+        const label = expense.notes || expense.category?.name || t('expenses.thisExpense');
 
         const confirmed = await confirm({
-            title: 'Delete this expense?',
+            title: t('expenses.deleteTitle'),
             message: `${label} — ${formatCurrency(expense.amount)}`,
-            confirmLabel: 'Delete',
+            confirmLabel: t('expenses.deleteConfirm'),
             destructive: true,
         });
 
@@ -87,8 +89,8 @@ const ExpensesScreen = ({ navigation }) => {
         removeFromCache(expense.id);
 
         notify({
-            message: 'Expense deleted',
-            actionLabel: 'UNDO',
+            message: t('expenses.deleted'),
+            actionLabel: t('expenses.undo'),
             onAction: () => restoreToCache(expense),
             onTimeout: async () => {
                 try {
@@ -97,7 +99,9 @@ const ExpensesScreen = ({ navigation }) => {
                     // The row reappearing on its own looks like a bug unless
                     // the reason lands with it.
                     restoreToCache(expense);
-                    notify({ message: `Couldn’t delete — ${errorMessage(err)}` });
+                    notify({
+                        message: t('expenses.couldntDelete', { reason: errorMessage(err) }),
+                    });
                 }
             },
         });
@@ -155,9 +159,11 @@ const ExpensesScreen = ({ navigation }) => {
             />
             <View style={styles.rowMain}>
                 <Text style={styles.rowTitle} numberOfLines={1}>
-                    {item.notes || item.category?.name || 'Expense'}
+                    {item.notes || item.category?.name || t('home.expenseFallback')}
                 </Text>
-                <Text style={styles.rowMeta}>{item.category?.name || 'Uncategorised'}</Text>
+                <Text style={styles.rowMeta}>
+                    {item.category?.name || t('expenses.uncategorised')}
+                </Text>
             </View>
             <Text style={styles.rowAmount}>−{formatCurrency(item.amount)}</Text>
         </TouchableOpacity>
@@ -165,13 +171,13 @@ const ExpensesScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScreenHeader title="Expenses" subtitle="All transactions" />
+            <ScreenHeader title={t('expenses.title')} subtitle={t('expenses.subtitle')} />
 
             <View style={styles.controls}>
                 <MonthSelector value={period} onChange={setPeriod} />
 
                 <Input
-                    placeholder="Search notes or category"
+                    placeholder={t('expenses.search')}
                     value={query}
                     onChangeText={setQuery}
                     autoCapitalize="none"
@@ -189,7 +195,12 @@ const ExpensesScreen = ({ navigation }) => {
                 {filtered.length > 0 ? (
                     <View style={styles.summary}>
                         <Text style={typography.caption}>
-                            {filtered.length} {filtered.length === 1 ? 'expense' : 'expenses'}
+                            {t(
+                                filtered.length === 1
+                                    ? 'expenses.countOne'
+                                    : 'expenses.countMany',
+                                { count: filtered.length }
+                            )}
                         </Text>
                         <Text style={styles.summaryTotal}>{formatCurrency(total)}</Text>
                     </View>
@@ -239,22 +250,22 @@ const ExpensesScreen = ({ navigation }) => {
                         query ? (
                             <EmptyState
                                 icon={Search}
-                                title="No matches"
-                                message={`Nothing found for “${query}” in this month.`}
+                                title={t('expenses.noMatchesTitle')}
+                                message={t('expenses.noMatchesMsg', { query })}
                             />
                         ) : (
                             <EmptyState
                                 icon={Receipt}
-                                title="No expenses this month"
-                                message="Tap the + tab to record your first one."
-                                actionLabel="Add expense"
+                                title={t('expenses.emptyTitle')}
+                                message={t('expenses.emptyMsg')}
+                                actionLabel={t('home.addExpense')}
                                 onAction={() => navigation.navigate('Add')}
                             />
                         )
                     }
                     ListFooterComponent={
                         filtered.length > 0 ? (
-                            <Text style={styles.hint}>Tap to edit · Long-press to delete</Text>
+                            <Text style={styles.hint}>{t('expenses.hint')}</Text>
                         ) : null
                     }
                 />
