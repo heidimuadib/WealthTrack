@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -67,18 +67,6 @@ const BudgetScreen = () => {
         expenseQuery.refetch();
     }, [budgetQuery, expenseQuery]);
 
-    // Seeds the input from the stored budget once per month. Keyed on the
-    // month rather than the value so a background refetch cannot overwrite an
-    // amount the user is midway through typing.
-    const seededFor = useRef(null);
-    useEffect(() => {
-        const stamp = `${period.year}-${period.month}`;
-        if (budgetQuery.data !== undefined && seededFor.current !== stamp) {
-            seededFor.current = stamp;
-            setDraft(budgetQuery.data ? String(budgetQuery.data) : '');
-        }
-    }, [budgetQuery.data, period]);
-
     const handleSave = async () => {
         const parsed = parseFloat(draft);
 
@@ -96,6 +84,9 @@ const BudgetScreen = () => {
                 month: period.month,
                 year: period.year,
             });
+            // The card above now shows the saved amount, so the field goes
+            // back to empty rather than holding a stale copy of it.
+            setDraft('');
             // A snackbar rather than a dialog — success shouldn't need a tap.
             notify({ message: t('budget.saved', { amount: formatCurrency(parsed) }) });
         } catch (err) {
@@ -152,7 +143,15 @@ const BudgetScreen = () => {
                     />
                 }
             >
-                <MonthSelector value={period} onChange={setPeriod} />
+                <MonthSelector
+                    value={period}
+                    onChange={(next) => {
+                        // An amount typed for one month must not follow the
+                        // user into another.
+                        setDraft('');
+                        setPeriod(next);
+                    }}
+                />
 
                 {error ? (
                     <ErrorBanner error={error} onRetry={retry} style={styles.banner} />
