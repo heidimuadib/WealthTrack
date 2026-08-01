@@ -13,6 +13,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import LoginScreen from '../screens/LoginScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
@@ -160,6 +161,7 @@ const AppNavigator = () => {
                         <Stack.Screen name="EditExpense" component={AddExpenseScreen} />
                         <Stack.Screen name="Categories" component={CategoriesScreen} />
                         <Stack.Screen name="Reports" component={ReportsScreen} />
+                        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Login" component={LoginScreen} />

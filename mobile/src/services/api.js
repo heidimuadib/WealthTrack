@@ -64,6 +64,7 @@ export const authService = {
     // so callers cannot tell the two routes apart.
     google: (idToken) => api.post('/auth/google', { idToken }),
     me: () => api.get('/auth/me'),
+    updateProfile: (data) => api.put('/auth/profile', data),
 };
 
 export const expenseService = {

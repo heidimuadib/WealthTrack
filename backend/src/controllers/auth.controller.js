@@ -205,4 +205,37 @@ const me = async (req, res) => {
     }
 };
 
-module.exports = { register, login, google, me };
+// The only editable field today is the display name. Email is identity —
+// changing it would need re-verification — so it stays read-only here.
+const updateProfile = async (req, res) => {
+    const { name } = req.body;
+
+    if (typeof name !== 'string' || name.trim() === '') {
+        return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const trimmed = name.trim();
+
+    if (trimmed.length > 60) {
+        return res.status(400).json({ error: 'Name must be 60 characters or fewer' });
+    }
+
+    try {
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { name: trimmed },
+            select: { id: true, email: true, name: true },
+        });
+
+        res.json({ user });
+    } catch (error) {
+        // Token still parses, but the account behind it is gone.
+        if (error.code === 'P2025') {
+            return res.status(401).json({ error: 'Account no longer exists' });
+        }
+        console.error(error);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
+module.exports = { register, login, google, me, updateProfile };

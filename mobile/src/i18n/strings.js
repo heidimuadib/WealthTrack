@@ -125,6 +125,18 @@ const en = {
     'settings.logoutTitle': 'Log out?',
     'settings.logoutMsg': 'You will need to sign in again.',
 
+    // Edit profile
+    'editProfile.title': 'Edit profile',
+    'editProfile.subtitle': 'Your details',
+    'editProfile.nameLabel': 'Name',
+    'editProfile.namePlaceholder': 'Your name',
+    'editProfile.nameRequired': 'Enter a name.',
+    'editProfile.emailLabel': 'Email',
+    'editProfile.emailNote': 'Email can’t be changed.',
+    'editProfile.save': 'Save changes',
+    'editProfile.saved': 'Profile updated',
+    'editProfile.couldNotSave': 'Could not save',
+
     // Login
     'login.welcomeBack': 'Welcome back. Let’s check your spending.',
     'login.startTracking': 'Start tracking where your money goes.',
@@ -271,6 +283,17 @@ const fil = {
     'settings.logoutTitle': 'Mag-log out?',
     'settings.logoutMsg': 'Kakailanganin mong mag-sign in muli.',
 
+    'editProfile.title': 'I-edit ang profile',
+    'editProfile.subtitle': 'Ang iyong mga detalye',
+    'editProfile.nameLabel': 'Pangalan',
+    'editProfile.namePlaceholder': 'Ang iyong pangalan',
+    'editProfile.nameRequired': 'Maglagay ng pangalan.',
+    'editProfile.emailLabel': 'Email',
+    'editProfile.emailNote': 'Hindi mapapalitan ang email.',
+    'editProfile.save': 'I-save ang mga pagbabago',
+    'editProfile.saved': 'Na-update ang profile',
+    'editProfile.couldNotSave': 'Hindi ma-save',
+
     'login.welcomeBack': 'Maligayang pagbabalik. Silipin natin ang gastos mo.',
     'login.startTracking': 'Simulan ang pagsubaybay sa iyong pera.',
     'login.name': 'Pangalan',
@@ -413,6 +436,17 @@ const ceb = {
     'settings.logout': 'Mag-log out',
     'settings.logoutTitle': 'Mag-log out?',
     'settings.logoutMsg': 'Kinahanglan ka mo-sign in pag-usab.',
+
+    'editProfile.title': 'I-edit ang profile',
+    'editProfile.subtitle': 'Imong mga detalye',
+    'editProfile.nameLabel': 'Ngalan',
+    'editProfile.namePlaceholder': 'Imong ngalan',
+    'editProfile.nameRequired': 'Pagbutang og ngalan.',
+    'editProfile.emailLabel': 'Email',
+    'editProfile.emailNote': 'Dili mausab ang email.',
+    'editProfile.save': 'I-save ang mga kausaban',
+    'editProfile.saved': 'Na-update ang profile',
+    'editProfile.couldNotSave': 'Wala ma-save',
 
     'login.welcomeBack': 'Maayong pagbalik. Atong tan-awon ang imong gasto.',
     'login.startTracking': 'Sugdi ang pagbantay asa padulong ang imong kwarta.',

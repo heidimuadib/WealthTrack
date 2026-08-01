@@ -31,6 +31,19 @@ const useAuthStore = create((set) => ({
         }
     },
 
+    // Applies fresh profile data (a name edit, a richer /auth/me) without
+    // touching the token or the auth flags.
+    setUser: async (user) => {
+        set({ user });
+        try {
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+        } catch (error) {
+            if (__DEV__) {
+                console.warn('Failed to persist profile', error);
+            }
+        }
+    },
+
     logout: async () => {
         set({ user: null, token: null, isAuthenticated: false, isRestoring: false });
         // Cached expenses and budgets belong to the account that just left.

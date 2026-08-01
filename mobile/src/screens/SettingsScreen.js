@@ -61,7 +61,13 @@ const SettingsScreen = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
             >
                 <Card>
-                    <View style={styles.profile}>
+                    <TouchableOpacity
+                        style={styles.profile}
+                        onPress={() => navigation.navigate('EditProfile')}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('editProfile.title')}
+                    >
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>{initial}</Text>
                         </View>
@@ -69,7 +75,8 @@ const SettingsScreen = ({ navigation }) => {
                             <Text style={styles.name}>{user?.name || 'Your account'}</Text>
                             <Text style={typography.caption}>{user?.email || ''}</Text>
                         </View>
-                    </View>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                    </TouchableOpacity>
                 </Card>
 
                 <Text style={styles.sectionTitle}>{t('settings.manage')}</Text>
