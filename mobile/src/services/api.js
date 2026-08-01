@@ -15,7 +15,9 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        console.log(`[MOBILE REQ] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
+        if (__DEV__) {
+            console.log(`[MOBILE REQ] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
+        }
         const token = useAuthStore.getState().token;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -23,7 +25,9 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
-        console.error('[MOBILE REQ ERR]', error);
+        if (__DEV__) {
+            console.error('[MOBILE REQ ERR]', error);
+        }
         return Promise.reject(error);
     }
 );
@@ -33,11 +37,15 @@ const ENTRY_ROUTES = ['/auth/login', '/auth/register'];
 
 api.interceptors.response.use(
     (response) => {
-        console.log(`[MOBILE RES OK] ${response.config.url} Status: ${response.status}`, response.data);
+        if (__DEV__) {
+            console.log(`[MOBILE RES OK] ${response.config.url} Status: ${response.status}`, response.data);
+        }
         return response;
     },
     (error) => {
-        console.error(`[MOBILE RES FAIL] ${error.config?.url || ''} Message: ${error.message}`, error.response?.data || error.code || '');
+        if (__DEV__) {
+            console.error(`[MOBILE RES FAIL] ${error.config?.url || ''} Message: ${error.message}`, error.response?.data || error.code || '');
+        }
         const url = error.config?.url || '';
         const isEntryRoute = ENTRY_ROUTES.some((route) => url.includes(route));
 
