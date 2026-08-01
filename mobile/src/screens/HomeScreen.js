@@ -144,19 +144,9 @@ const HomeScreen = ({ navigation }) => {
     }
 
     return (
-        <ScrollView
-            style={styles.container}
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    tintColor={colors.brand}
-                    colors={[colors.brand]}
-                />
-            }
-        >
+        <View style={styles.container}>
+            {/* Outside the ScrollView on purpose: the greeting and avatar are
+                identity, not content, so they hold still while figures move. */}
             <View style={styles.header}>
                 <View style={styles.headerText}>
                     <Text style={styles.greeting}>
@@ -177,6 +167,19 @@ const HomeScreen = ({ navigation }) => {
                 </TouchableOpacity>
             </View>
 
+        <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    tintColor={colors.brand}
+                    colors={[colors.brand]}
+                />
+            }
+        >
             <View style={styles.monthRow}>
                 <MonthSelector value={period} onChange={setPeriod} />
             </View>
@@ -293,6 +296,7 @@ const HomeScreen = ({ navigation }) => {
                 </View>
             ) : null}
         </ScrollView>
+        </View>
     );
 };
 
@@ -301,6 +305,9 @@ const createStyles = ({ colors, typography }) =>
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
+    },
+    scroll: {
+        flex: 1,
     },
     loading: {
         flex: 1,
@@ -318,15 +325,17 @@ const createStyles = ({ colors, typography }) =>
     },
     content: {
         padding: spacing.l,
-        // The status bar already reserves its own space above the window, so
-        // anything more than a breath here reads as a hole in the layout.
-        paddingTop: spacing.m,
+        paddingTop: spacing.xs,
         paddingBottom: spacing.xxxl,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.l,
+        paddingHorizontal: spacing.l,
+        // The status bar already reserves its own space above the window, so
+        // anything more than a breath here reads as a hole in the layout.
+        paddingTop: spacing.m,
+        paddingBottom: spacing.m,
     },
     headerText: {
         flex: 1,

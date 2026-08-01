@@ -164,7 +164,7 @@ const BudgetScreen = () => {
                     style={styles.statusCard}
                 >
                     <Text style={styles.statusLabel}>
-                        {isOver ? 'Over budget' : 'Remaining'}
+                        {isOver ? t('card.overBudget') : t('budget.remaining')}
                     </Text>
                     <Text style={styles.statusAmount}>
                         {formatCurrency(Math.abs(remaining))}
@@ -180,8 +180,12 @@ const BudgetScreen = () => {
                     </View>
 
                     <Text style={styles.statusMeta}>
-                        {formatCurrency(spent)} spent
-                        {budget > 0 ? ` of ${formatCompact(budget)}` : ' — no budget set'}
+                        {budget > 0
+                            ? t('budget.spentOf', {
+                                  spent: formatCurrency(spent),
+                                  budget: formatCompact(budget),
+                              })
+                            : t('budget.spentNone', { spent: formatCurrency(spent) })}
                     </Text>
                 </LinearGradient>
 
@@ -189,31 +193,38 @@ const BudgetScreen = () => {
                     <View style={styles.insight}>
                         <CalendarClock color={colors.brand} size={16} />
                         <Text style={styles.insightText}>
-                            You can spend{' '}
-                            <Text style={styles.insightStrong}>
-                                {formatCurrency(dailyAllowance.perDay)}
-                            </Text>{' '}
-                            a day for the next {dailyAllowance.daysLeft}{' '}
-                            {dailyAllowance.daysLeft === 1 ? 'day' : 'days'}.
+                            {t(
+                                dailyAllowance.daysLeft === 1
+                                    ? 'budget.dailyOne'
+                                    : 'budget.dailyMany',
+                                {
+                                    amount: formatCurrency(dailyAllowance.perDay),
+                                    days: dailyAllowance.daysLeft,
+                                }
+                            )}
                         </Text>
                     </View>
                 ) : null}
 
-                <Text style={styles.sectionTitle}>Set the limit</Text>
+                <Text style={styles.sectionTitle}>{t('budget.setLimit')}</Text>
                 <Card>
                     <Input
-                        label="Monthly budget"
+                        label={t('budget.monthlyBudget')}
                         value={draft}
                         onChangeText={setDraft}
                         keyboardType="decimal-pad"
                         placeholder="0.00"
                         prefix="₱"
                     />
-                    <Button title="Save budget" onPress={handleSave} loading={loading} />
-                    <Text style={styles.help}>
-                        Budgets are stored per month, so changing this only affects the month
-                        shown above.
-                    </Text>
+                    <Button
+                        title={t('budget.save')}
+                        onPress={handleSave}
+                        loading={loading}
+                        // Nothing typed means nothing to save; a disabled button
+                        // says so before a tap rather than with an error after.
+                        disabled={!draft.trim()}
+                    />
+                    <Text style={styles.help}>{t('budget.help')}</Text>
                 </Card>
             </ScrollView>
             )}

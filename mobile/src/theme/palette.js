@@ -38,6 +38,8 @@ export const light = {
 
     // Semantic — desaturated so they sit calmly on cream
     danger: '#C2453D',
+    // Ink for text sitting ON a solid danger fill.
+    onDanger: '#FFFFFF',
     dangerTint: '#FBEAE8',
     success: '#2E7D5B',
     successTint: '#E6F2EC',
@@ -86,6 +88,8 @@ export const dark = {
     borderStrong: '#453B30',
 
     danger: '#E8776E',
+    // The dark-mode danger is a light salmon, so its ink is dark, not white.
+    onDanger: '#33110D',
     dangerTint: '#3A211F',
     success: '#5FBF8F',
     successTint: '#1B3329',

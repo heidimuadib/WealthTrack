@@ -192,7 +192,7 @@ const SettingsScreen = ({ navigation }) => {
                     onPress={handleLogout}
                     activeOpacity={0.7}
                 >
-                    <LogOut color={colors.danger} size={18} />
+                    <LogOut color={colors.onDanger} size={18} />
                     <Text style={styles.logoutText}>{t('settings.logout')}</Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -325,13 +325,13 @@ const createStyles = ({ colors, typography }) =>
         marginTop: spacing.xxl,
         paddingVertical: spacing.l,
         borderRadius: radius.m,
-        backgroundColor: colors.dangerTint,
+        backgroundColor: colors.danger,
     },
     logoutText: {
         marginLeft: spacing.s,
         fontSize: 15,
         fontWeight: '600',
-        color: colors.danger,
+        color: colors.onDanger,
     },
     });
 
