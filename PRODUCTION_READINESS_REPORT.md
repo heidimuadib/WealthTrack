@@ -48,6 +48,7 @@ Repository hygiene: ten build logs were tracked in git, an SQLite database file 
 | Prisma migration state | ✅ 3 migrations, `Database schema is up to date` |
 | Release bundle secrets scan | ✅ no LAN IP, no debug logging, no session tracing |
 | Backend prod dependency audit | ✅ 0 vulnerabilities |
+| **axios 1.19 on-device runtime** | ✅ session restore + `/auth/me`, `/expenses`, `/budget` all 200 |
 
 ---
 
@@ -148,6 +149,7 @@ None. Folder structure already follows React Native and Express conventions (`co
 | `npx prisma migrate status` | "Database schema is up to date", 3 migrations |
 | API smoke: health, login, me, categories, expense CRUD, report, 401 guard | **all pass** |
 | Release bundle grep (LAN IP / logging / placeholder) | **all pass** |
+| On-device relaunch after the axios upgrade | **pass** — restored a live Google session and loaded dashboard data |
 
 > `npx jest` failing is reported as a genuine failure, not smoothed over. It is a *coverage* gap, not a regression — there were never any tests.
 
