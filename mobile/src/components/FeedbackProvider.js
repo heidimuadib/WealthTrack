@@ -103,6 +103,14 @@ export const FeedbackProvider = ({ children }) => {
         }
     }, []);
 
+    // Swiping the snackbar away reads as "I've seen it", so any deferred work
+    // commits exactly as it would have when the timer ran out. Only the action
+    // button cancels it.
+    const handleSnackDismiss = useCallback(() => {
+        flushPending();
+        setSnack(EMPTY_SNACK);
+    }, [flushPending]);
+
     // If the app tears down mid-window, commit rather than drop the action.
     useEffect(() => () => flushPending(), [flushPending]);
 
@@ -123,6 +131,7 @@ export const FeedbackProvider = ({ children }) => {
                 message={snack.message}
                 actionLabel={snack.actionLabel}
                 onAction={handleSnackAction}
+                onDismiss={handleSnackDismiss}
             />
         </FeedbackContext.Provider>
     );
