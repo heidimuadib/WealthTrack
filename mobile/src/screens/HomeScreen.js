@@ -314,7 +314,9 @@ const createStyles = ({ colors, typography }) =>
     },
     content: {
         padding: spacing.l,
-        paddingTop: spacing.xxl,
+        // The status bar already reserves its own space above the window, so
+        // anything more than a breath here reads as a hole in the layout.
+        paddingTop: spacing.m,
         paddingBottom: spacing.xxxl,
     },
     header: {

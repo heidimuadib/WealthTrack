@@ -35,7 +35,9 @@ const createStyles = ({ typography }) =>
     StyleSheet.create({
         container: {
             paddingHorizontal: spacing.l,
-            paddingTop: spacing.xxl,
+            // Matches the dashboard's top padding — the status bar already
+            // reserves its own space, so headers start close under it.
+            paddingTop: spacing.m,
             paddingBottom: spacing.l,
         },
         row: {
