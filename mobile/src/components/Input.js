@@ -18,6 +18,11 @@ const Input = ({
     returnKeyType,
     onSubmitEditing,
     blurOnSubmit,
+    // Optional: the field tracks its own focus for the border colour, but a
+    // caller may need to know as well — the add screen hides its keypad while
+    // a note is being typed.
+    onFocus,
+    onBlur,
     inputRef,
     prefix,
     leftIcon,
@@ -68,8 +73,14 @@ const Input = ({
                     autoCorrect={false}
                     multiline={multiline}
                     placeholderTextColor={colors.textMuted}
-                    onFocus={() => setFocused(true)}
-                    onBlur={() => setFocused(false)}
+                    onFocus={(event) => {
+                        setFocused(true);
+                        onFocus?.(event);
+                    }}
+                    onBlur={(event) => {
+                        setFocused(false);
+                        onBlur?.(event);
+                    }}
                 />
 
                 {isPassword && !rightSlot ? (
