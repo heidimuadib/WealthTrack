@@ -7,7 +7,7 @@ import {
     RefreshControl,
     TouchableOpacity,
 } from 'react-native';
-import { PieChart, Receipt, TrendingUp } from 'lucide-react-native';
+import { PieChart, Receipt, TrendingUp, Search } from 'lucide-react-native';
 
 import Avatar from '../components/Avatar';
 import Card from '../components/Card';
@@ -178,6 +178,19 @@ const HomeScreen = ({ navigation }) => {
                 </Text>
                 <Text style={typography.caption}>{t('home.tagline')}</Text>
             </View>
+
+            {/* Beside the avatar rather than over the greeting: the header
+                is the one place present on every visit, and a search icon
+                there is found without being looked for. */}
+            <TouchableOpacity
+                onPress={() => navigation.navigate('Search')}
+                activeOpacity={0.75}
+                style={styles.searchButton}
+                accessibilityRole="button"
+                accessibilityLabel={t('search.open')}
+            >
+                <Search color={colors.textSecondary} size={20} />
+            </TouchableOpacity>
 
             <TouchableOpacity
                 onPress={() => navigation.navigate('Settings')}
@@ -406,6 +419,14 @@ const createStyles = ({ colors, typography }) =>
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+    },
+    searchButton: {
+        // 44pt square, so the icon inside it can stay small and quiet.
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.xs,
     },
     prompt: {
         marginTop: spacing.l,

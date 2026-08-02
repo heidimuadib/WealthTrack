@@ -17,6 +17,7 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import GlobalSearchScreen from '../screens/GlobalSearchScreen';
 import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
@@ -170,6 +171,10 @@ const AppNavigator = () => {
                             what removes it the instant the account is gone. */}
                         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
                         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+                        {/* One route, reached with navigate rather than
+                            push, so tapping the header twice cannot stack two
+                            search screens on top of each other. */}
+                        <Stack.Screen name="Search" component={GlobalSearchScreen} />
                     </>
                 ) : (
                     <>
