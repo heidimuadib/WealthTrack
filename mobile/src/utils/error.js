@@ -3,6 +3,7 @@
 // spending. These turn a failure into something worth showing the user.
 
 import { translate } from '../i18n';
+import { serverMessageKey } from './serverErrors';
 
 // A 401 is already handled globally by the response interceptor, which clears
 // the session and sends the user back to the login screen. Showing an error for
@@ -28,12 +29,15 @@ export const errorMessage = (error) => {
         return translate('errors.server');
     }
 
-    // 4xx responses carry a message written for exactly this situation. The
-    // API writes them in English; mapping known ones per language is a later
-    // pass.
+    // 4xx responses carry a message written for exactly this situation, in
+    // English. Known ones are translated; anything unrecognised — a reworded
+    // message, or one from a newer API than this build — is still shown rather
+    // than swallowed, because the server's own English beats a generic
+    // apology that says nothing.
     const fromServer = error?.response?.data?.error;
     if (typeof fromServer === 'string' && fromServer.trim()) {
-        return fromServer;
+        const key = serverMessageKey(fromServer);
+        return key ? translate(key) : fromServer;
     }
 
     return translate('errors.generic');

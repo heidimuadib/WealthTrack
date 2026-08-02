@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Check, Shuffle } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import {
     buildColorGrid,
     contrastOn,
@@ -28,6 +29,7 @@ const ColorPicker = ({ value, onChange }) => {
     const theme = useTheme();
     const { colors, categoryPalette } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { t } = useLanguage();
 
     const [hexDraft, setHexDraft] = useState(value || '');
     const [hexError, setHexError] = useState(false);
@@ -60,7 +62,7 @@ const ColorPicker = ({ value, onChange }) => {
                 <View style={[styles.previewSwatch, { backgroundColor: value }]} />
 
                 <View style={styles.previewText}>
-                    <Text style={styles.previewLabel}>Selected colour</Text>
+                    <Text style={styles.previewLabel}>{t('color.selected')}</Text>
                     <TextInput
                         style={[styles.hexInput, hexError && styles.hexInputError]}
                         value={hexDraft}
@@ -77,14 +79,14 @@ const ColorPicker = ({ value, onChange }) => {
                     onPress={handleShuffle}
                     style={styles.shuffle}
                     activeOpacity={0.75}
-                    accessibilityLabel="Generate a random colour"
+                    accessibilityLabel={t('color.generateA11y')}
                 >
                     <Shuffle color={colors.brand} size={17} />
-                    <Text style={styles.shuffleText}>Generate</Text>
+                    <Text style={styles.shuffleText}>{t('color.generate')}</Text>
                 </TouchableOpacity>
             </View>
 
-            <Text style={styles.groupLabel}>Suggested</Text>
+            <Text style={styles.groupLabel}>{t('color.suggested')}</Text>
             <View style={styles.row}>
                 {categoryPalette.map((color) => (
                     <Swatch
@@ -97,7 +99,7 @@ const ColorPicker = ({ value, onChange }) => {
                 ))}
             </View>
 
-            <Text style={styles.groupLabel}>All colours</Text>
+            <Text style={styles.groupLabel}>{t('color.all')}</Text>
             <View style={styles.row}>
                 {spectrum.map((color) => (
                     <Swatch

@@ -69,7 +69,7 @@ const SettingsScreen = ({ navigation }) => {
                     >
                         <Avatar user={user} size={52} style={styles.avatar} />
                         <View style={styles.profileText}>
-                            <Text style={styles.name}>{user?.name || 'Your account'}</Text>
+                            <Text style={styles.name}>{user?.name || t('settings.yourAccount')}</Text>
                             <Text style={typography.caption}>{user?.email || ''}</Text>
                         </View>
                         <ChevronRight color={colors.textMuted} size={18} />

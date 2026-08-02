@@ -2,14 +2,16 @@ import React, { useMemo } from 'react';
 import { Modal, View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 
 // A list of choices from the bottom of the screen. ConfirmDialog answers a
 // yes/no question in the centre; this one is for picking between three or more
 // actions, where a dialog's two buttons run out.
-const ActionSheet = ({ visible, title, options = [], cancelLabel = 'Cancel', onClose }) => {
+const ActionSheet = ({ visible, title, options = [], cancelLabel, onClose }) => {
     const theme = useTheme();
     const { colors } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { t } = useLanguage();
     const insets = useSafeAreaInsets();
 
     return (
@@ -63,7 +65,7 @@ const ActionSheet = ({ visible, title, options = [], cancelLabel = 'Cancel', onC
                     })}
 
                     <TouchableOpacity style={styles.cancel} onPress={onClose} activeOpacity={0.75}>
-                        <Text style={styles.cancelText}>{cancelLabel}</Text>
+                        <Text style={styles.cancelText}>{cancelLabel || t('common.cancel')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

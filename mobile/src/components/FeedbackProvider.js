@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import Snackbar from './Snackbar';
+import { translate } from '../i18n';
 
 const FeedbackContext = createContext(null);
 
@@ -46,7 +47,9 @@ export const FeedbackProvider = ({ children }) => {
             setDialog({
                 visible: true,
                 showCancel: false,
-                confirmLabel: 'OK',
+                // Read at call time rather than from a module constant, so the
+                // label follows a language changed since this app started.
+                confirmLabel: translate('common.ok'),
                 ...options,
             });
         }), []);

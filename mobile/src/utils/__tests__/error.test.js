@@ -1,4 +1,5 @@
 import { errorMessage, errorTitle, isOffline, isHandledGlobally } from '../error';
+import { serverMessageKey, SERVER_MESSAGE_KEYS } from '../serverErrors';
 
 // Axios-shaped errors: a response means the server answered; a request with no
 // response means it never did.
@@ -37,6 +38,41 @@ describe('errorMessage', () => {
         expect(errorMessage(status(400, { error: 'Invalid credentials' }))).toBe(
             'Invalid credentials'
         );
+    });
+
+    it('shows a message it does not recognise rather than swallowing it', () => {
+        // A reworded or newer server message is still more use to the reader
+        // than a generic apology, so it survives untranslated.
+        expect(errorMessage(status(400, { error: 'Some brand new failure' }))).toBe(
+            'Some brand new failure'
+        );
+    });
+
+    it('renders every mapped server message through the dictionary', () => {
+        // Under English the translation is the API's own wording, so this
+        // asserts the lookup resolves rather than that the text changed —
+        // a mapped key with no entry would surface as "server.someKey".
+        Object.keys(SERVER_MESSAGE_KEYS).forEach((message) => {
+            const rendered = errorMessage(status(400, { error: message }));
+            expect({ message, rendered }).toEqual({ message, rendered: message });
+        });
+    });
+});
+
+describe('serverMessageKey', () => {
+    it('maps a known sentence onto its translation key', () => {
+        expect(serverMessageKey('Expense not found')).toBe('server.expenseNotFound');
+    });
+
+    it('ignores surrounding whitespace', () => {
+        expect(serverMessageKey('  Expense not found  ')).toBe('server.expenseNotFound');
+    });
+
+    it('returns undefined for anything it does not know', () => {
+        expect(serverMessageKey('Reworded next release')).toBeUndefined();
+        expect(serverMessageKey(undefined)).toBeUndefined();
+        expect(serverMessageKey(null)).toBeUndefined();
+        expect(serverMessageKey(42)).toBeUndefined();
     });
 
     it('falls back to a generic message when the API sent none', () => {

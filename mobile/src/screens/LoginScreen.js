@@ -125,7 +125,7 @@ const LoginScreen = () => {
                     {!isLogin ? (
                         <Input
                             label={t('login.name')}
-                            placeholder="Juan Dela Cruz"
+                            placeholder={t('login.namePlaceholder')}
                             value={name}
                             onChangeText={setName}
                             autoCapitalize="words"
@@ -140,7 +140,7 @@ const LoginScreen = () => {
                     <Input
                         inputRef={emailRef}
                         label={t('login.email')}
-                        placeholder="juan@example.com"
+                        placeholder={t('login.emailPlaceholder')}
                         value={email}
                         onChangeText={setEmail}
                         keyboardType="email-address"
@@ -188,7 +188,7 @@ const LoginScreen = () => {
                     </View>
 
                     <Button
-                        title="Continue with Google"
+                        title={t('login.continueGoogle')}
                         onPress={handleGoogle}
                         variant="secondary"
                         loading={googleLoading}

@@ -2,15 +2,20 @@ import React, { useMemo } from 'react';
 import { Modal, View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { AlertTriangle, Info } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 
 // Replaces Alert.alert so confirmations look like the rest of the app instead
 // of a stock Android dialog.
+//
+// The labels default inside the component rather than in the signature, so an
+// unlabelled dialog follows the language setting instead of freezing whatever
+// English was written at the default's declaration.
 const ConfirmDialog = ({
     visible,
     title,
     message,
-    confirmLabel = 'Confirm',
-    cancelLabel = 'Cancel',
+    confirmLabel,
+    cancelLabel,
     destructive = false,
     showCancel = true,
     onConfirm,
@@ -19,6 +24,7 @@ const ConfirmDialog = ({
     const theme = useTheme();
     const { colors } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { t } = useLanguage();
 
     const Icon = destructive ? AlertTriangle : Info;
     const accent = destructive ? colors.danger : colors.brand;
@@ -51,7 +57,9 @@ const ConfirmDialog = ({
                                 onPress={onCancel}
                                 activeOpacity={0.75}
                             >
-                                <Text style={styles.cancelText}>{cancelLabel}</Text>
+                                <Text style={styles.cancelText}>
+                                    {cancelLabel || t('common.cancel')}
+                                </Text>
                             </TouchableOpacity>
                         ) : null}
 
@@ -60,7 +68,9 @@ const ConfirmDialog = ({
                             onPress={onConfirm}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.confirmText}>{confirmLabel}</Text>
+                            <Text style={styles.confirmText}>
+                                {confirmLabel || t('common.confirm')}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

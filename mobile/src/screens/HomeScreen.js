@@ -160,7 +160,7 @@ const HomeScreen = ({ navigation }) => {
                     onPress={() => navigation.navigate('Settings')}
                     activeOpacity={0.75}
                     style={styles.avatar}
-                    accessibilityLabel="Open your profile"
+                    accessibilityLabel={t('home.openProfile')}
                 >
                     <Avatar user={user} size={44} />
                 </TouchableOpacity>

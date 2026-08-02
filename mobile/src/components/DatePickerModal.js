@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage, getWeekdays } from '../i18n';
 import { monthName } from '../utils/format';
-
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
@@ -15,6 +14,11 @@ const DatePickerModal = ({ visible, value, onSelect, onClose, allowFuture = fals
     const theme = useTheme();
     const { colors, typography } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    // Read fresh each render rather than memoised: the table lives behind the
+    // module-level current language, which a memo cannot see changing, and
+    // subscribing to the context here is what re-renders the row when it does.
+    const { t } = useLanguage();
+    const weekdays = getWeekdays();
 
     const initial = value ? new Date(value) : new Date();
     const [view, setView] = useState({
@@ -89,7 +93,7 @@ const DatePickerModal = ({ visible, value, onSelect, onClose, allowFuture = fals
                     </View>
 
                     <View style={styles.weekdays}>
-                        {WEEKDAYS.map((day, index) => (
+                        {weekdays.map((day, index) => (
                             <Text key={`${day}-${index}`} style={styles.weekday}>
                                 {day}
                             </Text>
@@ -139,7 +143,7 @@ const DatePickerModal = ({ visible, value, onSelect, onClose, allowFuture = fals
                     </View>
 
                     <TouchableOpacity style={styles.todayButton} onPress={handleToday}>
-                        <Text style={styles.todayText}>Jump to today</Text>
+                        <Text style={styles.todayText}>{t('datePicker.today')}</Text>
                     </TouchableOpacity>
                 </Pressable>
             </Pressable>

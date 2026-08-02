@@ -38,6 +38,7 @@ export const translate = (key, params) => {
 // accessors instead of going through translate().
 export const getMonths = () => lookup('months');
 export const getMonthsShort = () => lookup('monthsShort');
+export const getWeekdays = () => lookup('weekdays');
 
 const LanguageContext = createContext(null);
 

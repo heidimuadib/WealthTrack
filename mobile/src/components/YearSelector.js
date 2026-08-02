@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 
 // MonthSelector's sibling. Stepping past the current year is blocked for the
 // same reason stepping past the current month is — there is nothing there.
@@ -9,6 +10,7 @@ const YearSelector = ({ value, onChange }) => {
     const theme = useTheme();
     const { colors } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { t } = useLanguage();
 
     const canGoForward = value < new Date().getFullYear();
 
@@ -18,7 +20,7 @@ const YearSelector = ({ value, onChange }) => {
                 onPress={() => onChange(value - 1)}
                 style={styles.arrow}
                 hitSlop={hitSlop}
-                accessibilityLabel="Previous year"
+                accessibilityLabel={t('year.previous')}
             >
                 <ChevronLeft color={colors.textPrimary} size={20} />
             </TouchableOpacity>
@@ -30,7 +32,7 @@ const YearSelector = ({ value, onChange }) => {
                 disabled={!canGoForward}
                 style={styles.arrow}
                 hitSlop={hitSlop}
-                accessibilityLabel="Next year"
+                accessibilityLabel={t('year.next')}
             >
                 <ChevronRight
                     color={canGoForward ? colors.textPrimary : colors.borderStrong}

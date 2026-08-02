@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { TextInput, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 
 const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
@@ -34,6 +35,7 @@ const Input = ({
     const theme = useTheme();
     const { colors } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { t } = useLanguage();
 
     const [focused, setFocused] = useState(false);
     // Typing a password blind is the single biggest cause of a failed sign-in,
@@ -89,7 +91,9 @@ const Input = ({
                         style={styles.rightSlot}
                         hitSlop={HIT_SLOP}
                         accessibilityRole="button"
-                        accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+                        accessibilityLabel={
+                            revealed ? t('input.hidePassword') : t('input.showPassword')
+                        }
                     >
                         {revealed ? (
                             <EyeOff color={colors.textMuted} size={19} />

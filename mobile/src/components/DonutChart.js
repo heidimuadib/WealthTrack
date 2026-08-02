@@ -10,7 +10,10 @@ import { formatCompact } from '../utils/format';
 //
 // A thin ring rather than a thick one: at 20px a one-category month rendered
 // as a heavy solid band that shouted over the number it was framing.
-const DonutChart = ({ data = [], size = 172, thickness = 13, caption = 'Total' }) => {
+// The caption has no default wording: a component this far from the language
+// context should not be the place an untranslated English word survives, and
+// the one caller already passes a translated string.
+const DonutChart = ({ data = [], size = 172, thickness = 13, caption = '' }) => {
     const theme = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -69,7 +72,7 @@ const DonutChart = ({ data = [], size = 172, thickness = 13, caption = 'Total' }
             </Svg>
 
             <View style={styles.center} pointerEvents="none">
-                <Text style={styles.caption}>{caption}</Text>
+                {caption ? <Text style={styles.caption}>{caption}</Text> : null}
                 <Text style={styles.total} numberOfLines={1} adjustsFontSizeToFit>
                     {formatCompact(total)}
                 </Text>

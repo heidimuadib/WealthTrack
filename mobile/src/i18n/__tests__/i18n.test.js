@@ -1,5 +1,6 @@
-import { translate, getMonths, getMonthsShort, LANGUAGES } from '../index';
+import { translate, getMonths, getMonthsShort, getWeekdays, LANGUAGES } from '../index';
 import { STRINGS } from '../strings';
+import { SERVER_MESSAGE_KEYS } from '../../utils/serverErrors';
 
 // translate() reads the module-level current language, which the provider sets.
 // Tests drive it the same way by re-requiring with a set language would be
@@ -19,18 +20,68 @@ describe('dictionaries', () => {
         });
     });
 
-    it('translates every key English defines, or deliberately inherits it', () => {
-        // A missing key is not a failure — lookup falls back to English — but
-        // an *empty* translation would render as blank UI, which is.
+    it('gives every language seven weekday initials, Sunday first', () => {
+        Object.values(STRINGS).forEach((table) => {
+            expect(table.weekdays).toHaveLength(7);
+        });
+    });
+
+    // Lookup still falls back to English for a missing key, so this is not
+    // about avoiding a crash — it is the guard that keeps coverage finished.
+    // Without it, the next screen someone adds translates itself in English
+    // only and nothing says so until a Bisaya reader finds it.
+    it('defines exactly the same keys in every language', () => {
+        const en = Object.keys(STRINGS.en).sort();
+
+        ['fil', 'ceb'].forEach((code) => {
+            const keys = Object.keys(STRINGS[code]).sort();
+            expect({ code, missing: en.filter((k) => !keys.includes(k)) }).toEqual({
+                code,
+                missing: [],
+            });
+            expect({ code, extra: keys.filter((k) => !en.includes(k)) }).toEqual({
+                code,
+                extra: [],
+            });
+        });
+    });
+
+    it('never ships an empty string, which would render as blank UI', () => {
         Object.entries(STRINGS).forEach(([code, table]) => {
             Object.entries(table).forEach(([key, value]) => {
                 if (typeof value === 'string') {
-                    expect(value.trim()).not.toBe('');
+                    expect({ code, key, blank: value.trim() === '' }).toEqual({
+                        code,
+                        key,
+                        blank: false,
+                    });
                 } else {
                     expect(Array.isArray(value)).toBe(true);
                 }
             });
-            expect(code).toBeTruthy();
+        });
+    });
+
+    it('translates every server message the API can return', () => {
+        // A mapped key with no dictionary entry would make translate() render
+        // the key itself — "server.invalidDate" in front of the user.
+        Object.entries(SERVER_MESSAGE_KEYS).forEach(([message, key]) => {
+            ['en', 'fil', 'ceb'].forEach((code) => {
+                expect({ message, code, defined: typeof STRINGS[code][key] === 'string' }).toEqual({
+                    message,
+                    code,
+                    defined: true,
+                });
+            });
+        });
+    });
+
+    it('uses the API’s own wording for the English server messages', () => {
+        // The English side must stay verbatim: it is both what an English
+        // reader sees and what the map is keyed on, so a drift between the two
+        // means the map has silently stopped matching.
+        Object.entries(SERVER_MESSAGE_KEYS).forEach(([message, key]) => {
+            expect({ key, english: STRINGS.en[key] }).toEqual({ key, english: message });
         });
     });
 
@@ -84,9 +135,13 @@ describe('translate', () => {
     });
 });
 
-describe('month accessors', () => {
+describe('table accessors', () => {
     it('returns the active language month tables', () => {
         expect(getMonths()[0]).toBe('January');
         expect(getMonthsShort()[11]).toBe('Dec');
+    });
+
+    it('returns the active language weekday initials', () => {
+        expect(getWeekdays()).toEqual(['S', 'M', 'T', 'W', 'T', 'F', 'S']);
     });
 });

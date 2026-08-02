@@ -47,6 +47,7 @@ const en = {
     'home.addFirst': 'Add your first expense',
     'home.expenseFallback': 'Expense',
     'home.spentCaption': 'Spent',
+    'home.openProfile': 'Open your profile',
 
     // Spend summary card
     'card.spentThisMonth': 'Spent this month',
@@ -65,6 +66,7 @@ const en = {
     'card.leftOf': '{left} left of {budget}',
     'card.percentUsed': '{percent}% used',
     'card.setBudget': 'Set a budget for this month',
+    'card.opensBudget': 'Opens your budget',
 
     // Expenses
     'expenses.title': 'Expenses',
@@ -109,6 +111,28 @@ const en = {
     'add.keyDelete': 'Delete last digit',
     'add.keyDecimal': 'Decimal point',
 
+    // Categories
+    'categories.title': 'Categories',
+    'categories.subtitle': 'Organise your spending',
+    'categories.emptyTitle': 'No categories',
+    'categories.emptyMsg': 'Add one so you can start recording expenses.',
+    'categories.add': 'Add category',
+    'categories.new': 'New category',
+    'categories.edit': 'Edit category',
+    'categories.nameLabel': 'Name',
+    'categories.namePlaceholder': 'Groceries',
+    'categories.create': 'Create category',
+    'categories.saveChanges': 'Save changes',
+    'categories.needName': 'Give the category a name.',
+    'categories.updated': 'Category updated',
+    'categories.created': '“{name}” created',
+    'categories.deleted': 'Category deleted',
+    'categories.deleteTitle': 'Delete this category?',
+    'categories.deleteMsg': '“{name}” will be removed from your list.',
+    'categories.deleteConfirm': 'Delete',
+    'categories.stillInUse': 'Still in use',
+    'categories.couldNotDelete': 'Could not delete',
+
     // Budget
     'budget.title': 'Budget',
     'budget.subtitle': 'Monthly limit',
@@ -129,6 +153,7 @@ const en = {
     // Settings
     'settings.title': 'Settings',
     'settings.subtitle': 'Your account',
+    'settings.yourAccount': 'Your account',
     'settings.manage': 'Manage',
     'settings.reports': 'Reports',
     'settings.reportsMeta': 'Spending by month and category',
@@ -177,17 +202,42 @@ const en = {
 
     // Shared
     'common.cancel': 'Cancel',
+    'common.confirm': 'Confirm',
+    'common.ok': 'OK',
+
+    // Text input
+    'input.showPassword': 'Show password',
+    'input.hidePassword': 'Hide password',
+
+    // Colour picker
+    'color.selected': 'Selected colour',
+    'color.generate': 'Generate',
+    'color.generateA11y': 'Generate a random colour',
+    'color.suggested': 'Suggested',
+    'color.all': 'All colours',
+
+    // Date picker. Weekday initials are single letters read left to right from
+    // Sunday, so they follow the language rather than the English calendar.
+    'datePicker.today': 'Jump to today',
+    weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+
+    // Year selector
+    'year.previous': 'Previous year',
+    'year.next': 'Next year',
 
     // Login
     'login.welcomeBack': 'Welcome back. Let’s check your spending.',
     'login.startTracking': 'Start tracking where your money goes.',
     'login.name': 'Name',
+    'login.namePlaceholder': 'Juan Dela Cruz',
     'login.email': 'Email',
+    'login.emailPlaceholder': 'juan@example.com',
     'login.password': 'Password',
     'login.yourPassword': 'Your password',
     'login.atLeast8': 'At least 8 characters',
     'login.logIn': 'Log in',
     'login.createAccount': 'Create account',
+    'login.continueGoogle': 'Continue with Google',
     'login.or': 'or',
     'login.newHere': 'New here? ',
     'login.createLink': 'Create an account',
@@ -208,6 +258,16 @@ const en = {
     'reports.emptyTitle': 'Nothing recorded in {year}',
     'reports.emptyMsg': 'Expenses you log will roll up here by month and category.',
 
+    // Google sign-in. These never reach the API, so they are worded here
+    // rather than mapped from a server response.
+    'google.noToken': 'Google did not return a sign-in token. Please try again.',
+    'google.cancelled': 'Sign-in cancelled',
+    'google.playServices': 'Google Play services is unavailable on this device.',
+    'google.inProgress': 'A sign-in is already in progress.',
+    'google.notRegistered':
+        'This build is not registered with Google. Its signing fingerprint has to be added to the Android OAuth client.',
+    'google.failed': 'Google sign-in failed. Please try again.',
+
     // Errors
     'errors.offline': 'Can’t reach the server. Check your connection and try again.',
     'errors.rateLimited': 'Too many requests. Wait a moment and try again.',
@@ -217,6 +277,44 @@ const en = {
     'errors.couldntLoad': 'Couldn’t load',
     'errors.tryAgain': 'Try again',
     'errors.retry': 'RETRY',
+
+    // Server messages. The API answers 4xx in English, so utils/serverErrors
+    // maps each known sentence onto one of these keys and errorMessage() shows
+    // the translation. The English values are the API's own wording, which is
+    // what an unmapped message still falls back to.
+    'server.categoryRequired': 'A valid category is required',
+    'server.amountPositive': 'Amount must be a number greater than 0',
+    'server.amountNonNegative': 'Amount must be a number of zero or more',
+    'server.categoryNameRequired': 'Category name is required',
+    'server.imageUnreadable': 'Could not read that image.',
+    'server.emailRequired': 'Email is required',
+    'server.invalidBody': 'Invalid JSON body',
+    'server.invalidCategoryId': 'Invalid category id',
+    'server.invalidCredentials': 'Invalid credentials',
+    'server.invalidDate': 'Invalid date',
+    'server.invalidExpenseId': 'Invalid expense id',
+    'server.invalidMonthYear': 'Invalid month or year',
+    'server.invalidYear': 'Invalid year',
+    'server.missingGoogleToken': 'Missing Google token',
+    'server.nameRequired': 'Name is required',
+    'server.nameTooLong': 'Name must be 60 characters or fewer',
+    'server.noFields': 'No fields to update',
+    'server.noImage': 'No image received',
+    'server.passwordTooShort': 'Password must be at least 8 characters',
+    'server.userExists': 'User already exists',
+    'server.invalidMonth': 'Month must be a number from 1 to 12',
+    'server.invalidYearRange': 'Year must be a number between 2000 and 2100',
+    'server.imageType': 'Only JPEG, PNG, and WebP images can be used as a photo.',
+    'server.imageTooLarge': 'That image is larger than 5 MB. Pick a smaller one.',
+    'server.noAuthToken': 'Access denied. No token provided.',
+    'server.accountGone': 'Account no longer exists',
+    'server.googleUnverified': 'Could not verify that Google account',
+    'server.tokenExpired': 'Invalid or expired token.',
+    'server.googleNoEmail': 'That Google account has no verified email',
+    'server.categoryNotFound': 'Category not found',
+    'server.expenseNotFound': 'Expense not found',
+    'server.categoryDuplicate': 'You already have a category with that name.',
+    'server.googleUnavailable': 'Google sign-in is not available right now.',
 };
 
 const fil = {
@@ -250,6 +348,7 @@ const fil = {
     'home.addFirst': 'Itala ang unang gastos',
     'home.expenseFallback': 'Gastos',
     'home.spentCaption': 'Nagastos',
+    'home.openProfile': 'Buksan ang profile mo',
 
     'card.spentThisMonth': 'Nagastos ngayong buwan',
     'card.spentIn': 'Nagastos noong {period}',
@@ -267,6 +366,7 @@ const fil = {
     'card.leftOf': '{left} natitira sa {budget}',
     'card.percentUsed': '{percent}% nagamit',
     'card.setBudget': 'Maglagay ng budget ngayong buwan',
+    'card.opensBudget': 'Bubuksan ang budget mo',
 
     'expenses.title': 'Gastos',
     'expenses.subtitle': 'Lahat ng transaksyon',
@@ -309,6 +409,27 @@ const fil = {
     'add.keyDelete': 'Burahin ang huling numero',
     'add.keyDecimal': 'Tuldok desimal',
 
+    'categories.title': 'Mga Kategorya',
+    'categories.subtitle': 'Ayusin ang iyong gastos',
+    'categories.emptyTitle': 'Walang kategorya',
+    'categories.emptyMsg': 'Magdagdag ng isa para makapagtala ka ng gastos.',
+    'categories.add': 'Magdagdag ng kategorya',
+    'categories.new': 'Bagong kategorya',
+    'categories.edit': 'Baguhin ang kategorya',
+    'categories.nameLabel': 'Pangalan',
+    'categories.namePlaceholder': 'Grocery',
+    'categories.create': 'Gumawa ng kategorya',
+    'categories.saveChanges': 'I-save ang pagbabago',
+    'categories.needName': 'Lagyan ng pangalan ang kategorya.',
+    'categories.updated': 'Na-update ang kategorya',
+    'categories.created': 'Nagawa ang “{name}”',
+    'categories.deleted': 'Nabura ang kategorya',
+    'categories.deleteTitle': 'Burahin ang kategoryang ito?',
+    'categories.deleteMsg': 'Aalisin ang “{name}” sa listahan mo.',
+    'categories.deleteConfirm': 'Burahin',
+    'categories.stillInUse': 'Ginagamit pa',
+    'categories.couldNotDelete': 'Hindi mabura',
+
     'budget.title': 'Budget',
     'budget.subtitle': 'Buwanang limitasyon',
     'budget.invalidTitle': 'Maling halaga',
@@ -327,6 +448,7 @@ const fil = {
 
     'settings.title': 'Settings',
     'settings.subtitle': 'Ang iyong account',
+    'settings.yourAccount': 'Ang iyong account',
     'settings.manage': 'Pamahalaan',
     'settings.reports': 'Mga Report',
     'settings.reportsMeta': 'Gastos kada buwan at kategorya',
@@ -373,16 +495,37 @@ const fil = {
         'Payagan ang camera para makakuha ng bagong larawan, o pumili na lang mula sa gallery.',
 
     'common.cancel': 'Kanselahin',
+    'common.confirm': 'Kumpirmahin',
+    'common.ok': 'OK',
+
+    'input.showPassword': 'Ipakita ang password',
+    'input.hidePassword': 'Itago ang password',
+
+    'color.selected': 'Napiling kulay',
+    'color.generate': 'Bumuo',
+    'color.generateA11y': 'Bumuo ng random na kulay',
+    'color.suggested': 'Mungkahi',
+    'color.all': 'Lahat ng kulay',
+
+    // Linggo, Lunes, Martes, Miyerkules, Huwebes, Biyernes, Sabado
+    'datePicker.today': 'Pumunta sa ngayon',
+    weekdays: ['L', 'L', 'M', 'M', 'H', 'B', 'S'],
+
+    'year.previous': 'Nakaraang taon',
+    'year.next': 'Susunod na taon',
 
     'login.welcomeBack': 'Maligayang pagbabalik. Silipin natin ang gastos mo.',
     'login.startTracking': 'Simulan ang pagsubaybay sa iyong pera.',
     'login.name': 'Pangalan',
+    'login.namePlaceholder': 'Juan Dela Cruz',
     'login.email': 'Email',
+    'login.emailPlaceholder': 'juan@example.com',
     'login.password': 'Password',
     'login.yourPassword': 'Ang iyong password',
     'login.atLeast8': 'Hindi bababa sa 8 characters',
     'login.logIn': 'Mag-log in',
     'login.createAccount': 'Gumawa ng account',
+    'login.continueGoogle': 'Magpatuloy gamit ang Google',
     'login.or': 'o',
     'login.newHere': 'Bago dito? ',
     'login.createLink': 'Gumawa ng account',
@@ -402,6 +545,14 @@ const fil = {
     'reports.emptyTitle': 'Walang tala noong {year}',
     'reports.emptyMsg': 'Lalabas dito ang mga gastos mo kada buwan at kategorya.',
 
+    'google.noToken': 'Walang naibalik na sign-in token ang Google. Subukan muli.',
+    'google.cancelled': 'Kinansela ang pag-sign in',
+    'google.playServices': 'Hindi available ang Google Play services sa device na ito.',
+    'google.inProgress': 'May kasalukuyang pag-sign in.',
+    'google.notRegistered':
+        'Hindi nakarehistro sa Google ang build na ito. Kailangang idagdag ang signing fingerprint nito sa Android OAuth client.',
+    'google.failed': 'Hindi natuloy ang Google sign-in. Subukan muli.',
+
     'errors.offline': 'Hindi maabot ang server. Suriin ang koneksyon at subukan muli.',
     'errors.rateLimited': 'Sobrang daming request. Sandali lang at subukan muli.',
     'errors.server': 'Nagkaproblema ang server. Subukan muli mamaya.',
@@ -410,6 +561,40 @@ const fil = {
     'errors.couldntLoad': 'Hindi ma-load',
     'errors.tryAgain': 'Subukan muli',
     'errors.retry': 'ULITIN',
+
+    'server.categoryRequired': 'Kailangan ng wastong kategorya',
+    'server.amountPositive': 'Dapat mas mataas sa 0 ang halaga',
+    'server.amountNonNegative': 'Dapat zero o mas mataas ang halaga',
+    'server.categoryNameRequired': 'Kailangan ng pangalan ng kategorya',
+    'server.imageUnreadable': 'Hindi mabasa ang larawang iyon.',
+    'server.emailRequired': 'Kailangan ng email',
+    'server.invalidBody': 'Maling format ng hiling',
+    'server.invalidCategoryId': 'Maling category id',
+    'server.invalidCredentials': 'Maling email o password',
+    'server.invalidDate': 'Maling petsa',
+    'server.invalidExpenseId': 'Maling expense id',
+    'server.invalidMonthYear': 'Maling buwan o taon',
+    'server.invalidYear': 'Maling taon',
+    'server.missingGoogleToken': 'Walang Google token',
+    'server.nameRequired': 'Kailangan ng pangalan',
+    'server.nameTooLong': 'Dapat 60 characters o mas maikli ang pangalan',
+    'server.noFields': 'Walang babaguhin',
+    'server.noImage': 'Walang natanggap na larawan',
+    'server.passwordTooShort': 'Dapat hindi bababa sa 8 characters ang password',
+    'server.userExists': 'May account na sa email na ito',
+    'server.invalidMonth': 'Dapat numero mula 1 hanggang 12 ang buwan',
+    'server.invalidYearRange': 'Dapat numero sa pagitan ng 2000 at 2100 ang taon',
+    'server.imageType': 'JPEG, PNG, at WebP lang ang puwedeng gamiting larawan.',
+    'server.imageTooLarge': 'Mas malaki sa 5 MB ang larawan. Pumili ng mas maliit.',
+    'server.noAuthToken': 'Walang access. Walang token.',
+    'server.accountGone': 'Wala na ang account',
+    'server.googleUnverified': 'Hindi ma-verify ang Google account na iyon',
+    'server.tokenExpired': 'Mali o expired na ang token.',
+    'server.googleNoEmail': 'Walang verified na email ang Google account na iyon',
+    'server.categoryNotFound': 'Hindi mahanap ang kategorya',
+    'server.expenseNotFound': 'Hindi mahanap ang gastos',
+    'server.categoryDuplicate': 'May kategorya ka nang ganyan ang pangalan.',
+    'server.googleUnavailable': 'Hindi available ngayon ang Google sign-in.',
 };
 
 const ceb = {
@@ -443,6 +628,7 @@ const ceb = {
     'home.addFirst': 'Irekord ang unang gasto',
     'home.expenseFallback': 'Gasto',
     'home.spentCaption': 'Nagasto',
+    'home.openProfile': 'Ablihi ang imong profile',
 
     'card.spentThisMonth': 'Nagasto karong buwana',
     'card.spentIn': 'Nagasto niadtong {period}',
@@ -460,6 +646,7 @@ const ceb = {
     'card.leftOf': '{left} nabilin sa {budget}',
     'card.percentUsed': '{percent}% nagamit',
     'card.setBudget': 'Pagbutang og budget karong buwana',
+    'card.opensBudget': 'Ablihan ang imong budget',
 
     'expenses.title': 'Gasto',
     'expenses.subtitle': 'Tanang transaksyon',
@@ -502,6 +689,27 @@ const ceb = {
     'add.keyDelete': 'Papasa ang kataposang numero',
     'add.keyDecimal': 'Tuldok desimal',
 
+    'categories.title': 'Mga Kategorya',
+    'categories.subtitle': 'Ayoha ang imong gasto',
+    'categories.emptyTitle': 'Walay kategorya',
+    'categories.emptyMsg': 'Pagdugang og usa aron makarekord ka og gasto.',
+    'categories.add': 'Pagdugang og kategorya',
+    'categories.new': 'Bag-ong kategorya',
+    'categories.edit': 'Usbon ang kategorya',
+    'categories.nameLabel': 'Ngalan',
+    'categories.namePlaceholder': 'Grocery',
+    'categories.create': 'Paghimo og kategorya',
+    'categories.saveChanges': 'I-save ang kausaban',
+    'categories.needName': 'Butangi og ngalan ang kategorya.',
+    'categories.updated': 'Na-update ang kategorya',
+    'categories.created': 'Nahimo ang “{name}”',
+    'categories.deleted': 'Napapas ang kategorya',
+    'categories.deleteTitle': 'Papason kining kategoryaha?',
+    'categories.deleteMsg': 'Kuhaon ang “{name}” gikan sa imong listahan.',
+    'categories.deleteConfirm': 'Papasa',
+    'categories.stillInUse': 'Gigamit pa',
+    'categories.couldNotDelete': 'Wala mapapas',
+
     'budget.title': 'Budget',
     'budget.subtitle': 'Binulan nga limit',
     'budget.invalidTitle': 'Sayop nga kantidad',
@@ -520,6 +728,7 @@ const ceb = {
 
     'settings.title': 'Settings',
     'settings.subtitle': 'Imong account',
+    'settings.yourAccount': 'Imong account',
     'settings.manage': 'Pagdumala',
     'settings.reports': 'Mga Report',
     'settings.reportsMeta': 'Gasto matag buwan ug kategorya',
@@ -566,16 +775,37 @@ const ceb = {
         'Tugoti ang camera aron makakuha og bag-ong litrato, o pagpili na lang gikan sa gallery.',
 
     'common.cancel': 'Kanselahon',
+    'common.confirm': 'Kumpirmaha',
+    'common.ok': 'OK',
+
+    'input.showPassword': 'Ipakita ang password',
+    'input.hidePassword': 'Itago ang password',
+
+    'color.selected': 'Napiling kolor',
+    'color.generate': 'Paghimo',
+    'color.generateA11y': 'Paghimo og random nga kolor',
+    'color.suggested': 'Sugyot',
+    'color.all': 'Tanang kolor',
+
+    // Dominggo, Lunes, Martes, Miyerkules, Huwebes, Biyernes, Sabado
+    'datePicker.today': 'Adto sa karon',
+    weekdays: ['D', 'L', 'M', 'M', 'H', 'B', 'S'],
+
+    'year.previous': 'Miaging tuig',
+    'year.next': 'Sunod nga tuig',
 
     'login.welcomeBack': 'Maayong pagbalik. Atong tan-awon ang imong gasto.',
     'login.startTracking': 'Sugdi ang pagbantay asa padulong ang imong kwarta.',
     'login.name': 'Ngalan',
+    'login.namePlaceholder': 'Juan Dela Cruz',
     'login.email': 'Email',
+    'login.emailPlaceholder': 'juan@example.com',
     'login.password': 'Password',
     'login.yourPassword': 'Imong password',
     'login.atLeast8': 'Dili moubos sa 8 ka characters',
     'login.logIn': 'Mag-log in',
     'login.createAccount': 'Paghimo og account',
+    'login.continueGoogle': 'Padayon gamit ang Google',
     'login.or': 'o',
     'login.newHere': 'Bag-o dinhi? ',
     'login.createLink': 'Paghimo og account',
@@ -595,6 +825,14 @@ const ceb = {
     'reports.emptyTitle': 'Walay narekord sa {year}',
     'reports.emptyMsg': 'Makita dinhi ang imong mga gasto matag buwan ug kategorya.',
 
+    'google.noToken': 'Walay gibalik nga sign-in token ang Google. Sulayi pag-usab.',
+    'google.cancelled': 'Gikansela ang pag-sign in',
+    'google.playServices': 'Dili available ang Google Play services niining device.',
+    'google.inProgress': 'Naa nay nagpadayon nga pag-sign in.',
+    'google.notRegistered':
+        'Kining build wala marehistro sa Google. Kinahanglan idugang ang signing fingerprint niini sa Android OAuth client.',
+    'google.failed': 'Wala molampos ang Google sign-in. Sulayi pag-usab.',
+
     'errors.offline': 'Dili maabot ang server. Susiha ang koneksyon ug sulayi pag-usab.',
     'errors.rateLimited': 'Sobra ka daghang request. Hulat kadiyot ug sulayi pag-usab.',
     'errors.server': 'Naay problema ang server. Sulayi pag-usab unya.',
@@ -603,6 +841,40 @@ const ceb = {
     'errors.couldntLoad': 'Wala ma-load',
     'errors.tryAgain': 'Sulayi pag-usab',
     'errors.retry': 'SULAYI',
+
+    'server.categoryRequired': 'Kinahanglan og husto nga kategorya',
+    'server.amountPositive': 'Ang kantidad kinahanglan mas dako sa 0',
+    'server.amountNonNegative': 'Ang kantidad kinahanglan zero o mas taas',
+    'server.categoryNameRequired': 'Kinahanglan ang ngalan sa kategorya',
+    'server.imageUnreadable': 'Wala mabasa kana nga litrato.',
+    'server.emailRequired': 'Kinahanglan ang email',
+    'server.invalidBody': 'Sayop nga pormat sa hangyo',
+    'server.invalidCategoryId': 'Sayop nga category id',
+    'server.invalidCredentials': 'Sayop nga email o password',
+    'server.invalidDate': 'Sayop nga petsa',
+    'server.invalidExpenseId': 'Sayop nga expense id',
+    'server.invalidMonthYear': 'Sayop nga buwan o tuig',
+    'server.invalidYear': 'Sayop nga tuig',
+    'server.missingGoogleToken': 'Walay Google token',
+    'server.nameRequired': 'Kinahanglan ang ngalan',
+    'server.nameTooLong': 'Ang ngalan kinahanglan 60 ka characters o mas mubo',
+    'server.noFields': 'Walay usbon',
+    'server.noImage': 'Walay nadawat nga litrato',
+    'server.passwordTooShort': 'Ang password kinahanglan dili moubos sa 8 ka characters',
+    'server.userExists': 'Naa nay account niining email',
+    'server.invalidMonth': 'Ang buwan kinahanglan numero gikan 1 hangtod 12',
+    'server.invalidYearRange': 'Ang tuig kinahanglan numero tali sa 2000 ug 2100',
+    'server.imageType': 'JPEG, PNG, ug WebP ra ang pwedeng gamiton nga litrato.',
+    'server.imageTooLarge': 'Mas dako sa 5 MB kana nga litrato. Pagpili og mas gamay.',
+    'server.noAuthToken': 'Walay access. Walay token.',
+    'server.accountGone': 'Wala na ang account',
+    'server.googleUnverified': 'Wala ma-verify kana nga Google account',
+    'server.tokenExpired': 'Sayop o expired na ang token.',
+    'server.googleNoEmail': 'Kana nga Google account walay verified nga email',
+    'server.categoryNotFound': 'Wala makit-i ang kategorya',
+    'server.expenseNotFound': 'Wala makit-i ang gasto',
+    'server.categoryDuplicate': 'Naa na kay kategorya nga ingon ana og ngalan.',
+    'server.googleUnavailable': 'Dili available karon ang Google sign-in.',
 };
 
 export const STRINGS = { en, fil, ceb };

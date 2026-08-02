@@ -130,7 +130,7 @@ const SpendSummaryCard = ({ period, total, budget, previousTotal, onPressBudget 
                     ? `${label}, ${amount.symbol}${amount.whole}. ${percentUsed} percent of your ${formatCompact(budget)} budget used.`
                     : `${label}, ${amount.symbol}${amount.whole}. No budget set.`
             }
-            accessibilityHint="Opens your budget"
+            accessibilityHint={t('card.opensBudget')}
         >
             <LinearGradient
                 colors={theme.balanceGradient}

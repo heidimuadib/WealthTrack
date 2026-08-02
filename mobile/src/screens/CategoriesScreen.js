@@ -22,6 +22,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import ColorPicker from '../components/ColorPicker';
 import { useFeedback } from '../components/FeedbackProvider';
 import { radius, spacing, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { randomCategoryColor } from '../utils/color';
 import {
     useCategories,
@@ -35,6 +36,7 @@ const CategoriesScreen = ({ navigation }) => {
     const theme = useTheme();
     const { colors, categoryPalette } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { t } = useLanguage();
 
     const [editorOpen, setEditorOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -79,7 +81,7 @@ const CategoriesScreen = ({ navigation }) => {
 
     const handleSave = async () => {
         if (!name.trim()) {
-            setError('Give the category a name.');
+            setError(t('categories.needName'));
             return;
         }
 
@@ -92,10 +94,10 @@ const CategoriesScreen = ({ navigation }) => {
                     name: name.trim(),
                     color,
                 });
-                notify({ message: 'Category updated' });
+                notify({ message: t('categories.updated') });
             } else {
                 const created = await createCategory.mutateAsync({ name: name.trim(), color });
-                notify({ message: `“${created.name}” created` });
+                notify({ message: t('categories.created', { name: created.name }) });
             }
             setEditorOpen(false);
         } catch (err) {
@@ -105,9 +107,9 @@ const CategoriesScreen = ({ navigation }) => {
 
     const handleDelete = async (category) => {
         const confirmed = await confirm({
-            title: 'Delete this category?',
-            message: `“${category.name}” will be removed from your list.`,
-            confirmLabel: 'Delete',
+            title: t('categories.deleteTitle'),
+            message: t('categories.deleteMsg', { name: category.name }),
+            confirmLabel: t('categories.deleteConfirm'),
             destructive: true,
         });
 
@@ -120,7 +122,7 @@ const CategoriesScreen = ({ navigation }) => {
         // straight away rather than five seconds later.
         try {
             await deleteCategory.mutateAsync(category.id);
-            notify({ message: 'Category deleted' });
+            notify({ message: t('categories.deleted') });
         } catch (err) {
             // A 409 is the API refusing to orphan expenses. Anything else —
             // most often no connection — is not about this category at all,
@@ -129,7 +131,9 @@ const CategoriesScreen = ({ navigation }) => {
             const stillInUse = err.response?.status === 409;
 
             alert({
-                title: stillInUse ? 'Still in use' : 'Could not delete',
+                title: stillInUse
+                    ? t('categories.stillInUse')
+                    : t('categories.couldNotDelete'),
                 message: errorMessage(err),
             });
         }
@@ -158,8 +162,8 @@ const CategoriesScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <ScreenHeader
-                title="Categories"
-                subtitle="Organise your spending"
+                title={t('categories.title')}
+                subtitle={t('categories.subtitle')}
                 onBack={() => navigation.goBack()}
             />
 
@@ -177,9 +181,9 @@ const CategoriesScreen = ({ navigation }) => {
                     ListEmptyComponent={
                         <EmptyState
                             icon={Tag}
-                            title="No categories"
-                            message="Add one so you can start recording expenses."
-                            actionLabel="Add category"
+                            title={t('categories.emptyTitle')}
+                            message={t('categories.emptyMsg')}
+                            actionLabel={t('categories.add')}
                             onAction={openCreate}
                         />
                     }
@@ -188,7 +192,7 @@ const CategoriesScreen = ({ navigation }) => {
 
             <View style={styles.footer}>
                 <Button
-                    title="Add category"
+                    title={t('categories.add')}
                     onPress={openCreate}
                     icon={<Plus color={colors.onBrand} size={18} />}
                 />
@@ -210,7 +214,7 @@ const CategoriesScreen = ({ navigation }) => {
                     <View style={styles.sheet}>
                         <View style={styles.grabber} />
                         <Text style={styles.sheetTitle}>
-                            {editing ? 'Edit category' : 'New category'}
+                            {editing ? t('categories.edit') : t('categories.new')}
                         </Text>
 
                         <ScrollView
@@ -218,10 +222,10 @@ const CategoriesScreen = ({ navigation }) => {
                             keyboardShouldPersistTaps="handled"
                         >
                             <Input
-                                label="Name"
+                                label={t('categories.nameLabel')}
                                 value={name}
                                 onChangeText={setName}
-                                placeholder="Groceries"
+                                placeholder={t('categories.namePlaceholder')}
                                 autoCapitalize="words"
                             />
 
@@ -232,12 +236,12 @@ const CategoriesScreen = ({ navigation }) => {
 
                         <View style={styles.sheetActions}>
                             <Button
-                                title={editing ? 'Save changes' : 'Create category'}
+                                title={editing ? t('categories.saveChanges') : t('categories.create')}
                                 onPress={handleSave}
                                 loading={saving}
                             />
                             <Button
-                                title="Cancel"
+                                title={t('common.cancel')}
                                 onPress={() => setEditorOpen(false)}
                                 variant="ghost"
                                 style={styles.cancel}
