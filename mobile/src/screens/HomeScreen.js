@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -17,6 +17,7 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import SpendSummaryCard from '../components/SpendSummaryCard';
+import BudgetPromptCard from '../components/BudgetPromptCard';
 import { DashboardSkeleton } from '../components/ScreenSkeletons';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
@@ -25,6 +26,12 @@ import { useBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import useAuthStore from '../store/authStore';
 import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
+import {
+    shouldShowBudgetPrompt,
+    readDismissedMonths,
+    rememberDismissal,
+    monthKey,
+} from '../utils/budgetPrompt';
 import {
     currentMonthYear,
     formatCurrency,
@@ -79,6 +86,34 @@ const HomeScreen = ({ navigation }) => {
         hasData,
         error,
     });
+
+    // null until the stored preference has been read. Rendering the prompt
+    // before then would show it for a moment to someone who dismissed it days
+    // ago, which is worse than showing it a beat late.
+    const [dismissedMonths, setDismissedMonths] = useState(null);
+
+    useEffect(() => {
+        let alive = true;
+        readDismissedMonths().then((months) => {
+            if (alive) {
+                setDismissedMonths(months);
+            }
+        });
+        return () => {
+            alive = false;
+        };
+    }, []);
+
+    const showBudgetPrompt =
+        dismissedMonths !== null &&
+        shouldShowBudgetPrompt({ state, budget, period, dismissedMonths });
+
+    const dismissBudgetPrompt = useCallback(() => {
+        // Applied locally first so the card closes on the tap rather than on
+        // the write, and remembered afterwards.
+        setDismissedMonths((current) => [...(current ?? []), monthKey(period)]);
+        rememberDismissal(period);
+    }, [period]);
 
     const retry = useCallback(() => {
         expenseQuery.refetch();
@@ -209,6 +244,17 @@ const HomeScreen = ({ navigation }) => {
                 previousTotal={previousTotal}
                 onPressBudget={() => navigation.navigate('Budget')}
             />
+
+            {/* Directly under the figure it would give meaning to. The card
+                above already offers "set a budget"; this says what one is
+                actually for, which is the part that makes it worth doing. */}
+            {showBudgetPrompt ? (
+                <BudgetPromptCard
+                    onSetBudget={() => navigation.navigate('Budget')}
+                    onDismiss={dismissBudgetPrompt}
+                    style={styles.prompt}
+                />
+            ) : null}
 
             <Text style={styles.sectionTitle}>{t('home.breakdown')}</Text>
             <Card>
@@ -360,6 +406,10 @@ const createStyles = ({ colors, typography }) =>
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+    },
+    prompt: {
+        marginTop: spacing.l,
+        marginBottom: 0,
     },
     sectionTitle: {
         ...typography.h2,

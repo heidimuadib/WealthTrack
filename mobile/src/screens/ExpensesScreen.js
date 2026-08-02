@@ -253,10 +253,16 @@ const ExpensesScreen = ({ navigation }) => {
                     }
                     ListEmptyComponent={
                         query ? (
+                            // Filtered-empty, not empty. There are expenses
+                            // here; the search just does not match any. The
+                            // useful next step is undoing the search, not
+                            // recording something new.
                             <EmptyState
                                 icon={Search}
                                 title={t('expenses.noMatchesTitle')}
                                 message={t('expenses.noMatchesMsg', { query })}
+                                actionLabel={t('expenses.clearSearch')}
+                                onAction={() => setQuery('')}
                             />
                         ) : (
                             <EmptyState

@@ -74,7 +74,11 @@ const createStyles = () =>
             paddingHorizontal: spacing.xl,
         },
         small: {
-            height: 40,
+            // 44 rather than 40: this is the height every empty-state and
+            // error-state action inherits, and those are the buttons a person
+            // is most likely to be reaching for one-handed after something
+            // did not go the way they expected.
+            height: 44,
             borderRadius: radius.s,
             paddingHorizontal: spacing.l,
         },

@@ -78,6 +78,7 @@ const en = {
     'expenses.hint': 'Tap to edit · Long-press to delete',
     'expenses.noMatchesTitle': 'No matches',
     'expenses.noMatchesMsg': 'Nothing found for “{query}” in this month.',
+    'expenses.clearSearch': 'Clear search',
     'expenses.emptyTitle': 'No expenses this month',
     'expenses.emptyMsg': 'Tap the + tab to record your first one.',
     'expenses.deleteTitle': 'Delete this expense?',
@@ -115,7 +116,8 @@ const en = {
     'categories.title': 'Categories',
     'categories.subtitle': 'Organise your spending',
     'categories.emptyTitle': 'No categories',
-    'categories.emptyMsg': 'Add one so you can start recording expenses.',
+    'categories.emptyMsg':
+        'Categories group your spending, so a list of amounts becomes a picture of where the money goes.',
     'categories.add': 'Add category',
     'categories.new': 'New category',
     'categories.edit': 'Edit category',
@@ -142,7 +144,14 @@ const en = {
     'budget.couldNotSave': 'Could not save',
     'budget.remaining': 'Remaining',
     'budget.spentOf': '{spent} spent of {budget}',
-    'budget.spentNone': '{spent} spent — no budget set',
+    'budget.noneHint': 'No limit set for this month. Add one below to see what you have left.',
+
+    // First-budget prompt
+    'budgetPrompt.title': 'Plan this month',
+    'budgetPrompt.body':
+        'Set a monthly budget and WealthTrack will show what you can safely spend, and how much is left as the month goes on.',
+    'budgetPrompt.action': 'Set budget',
+    'budgetPrompt.dismiss': 'Dismiss',
     'budget.dailyMany': 'You can spend {amount} a day for the next {days} days.',
     'budget.dailyOne': 'You can spend {amount} on the last day of the month.',
     'budget.setLimit': 'Set the limit',
@@ -466,6 +475,7 @@ const fil = {
     'expenses.hint': 'I-tap para baguhin · Pindutin nang matagal para burahin',
     'expenses.noMatchesTitle': 'Walang tugma',
     'expenses.noMatchesMsg': 'Walang nahanap para sa “{query}” ngayong buwan.',
+    'expenses.clearSearch': 'I-clear ang paghahanap',
     'expenses.emptyTitle': 'Walang gastos ngayong buwan',
     'expenses.emptyMsg': 'I-tap ang + para itala ang una mo.',
     'expenses.deleteTitle': 'Burahin ang gastos na ito?',
@@ -501,7 +511,8 @@ const fil = {
     'categories.title': 'Mga Kategorya',
     'categories.subtitle': 'Ayusin ang iyong gastos',
     'categories.emptyTitle': 'Walang kategorya',
-    'categories.emptyMsg': 'Magdagdag ng isa para makapagtala ka ng gastos.',
+    'categories.emptyMsg':
+        'Pinagpapangkat ng kategorya ang gastos mo, kaya ang listahan ng halaga ay nagiging larawan kung saan napupunta ang pera.',
     'categories.add': 'Magdagdag ng kategorya',
     'categories.new': 'Bagong kategorya',
     'categories.edit': 'Baguhin ang kategorya',
@@ -527,7 +538,14 @@ const fil = {
     'budget.couldNotSave': 'Hindi ma-save',
     'budget.remaining': 'Natitira',
     'budget.spentOf': 'Nagastos: {spent} sa {budget}',
-    'budget.spentNone': 'Nagastos: {spent} — walang budget',
+    'budget.noneHint':
+        'Wala pang limitasyon ngayong buwan. Maglagay sa ibaba para makita kung magkano pa ang natitira.',
+
+    'budgetPrompt.title': 'Planuhin ang buwang ito',
+    'budgetPrompt.body':
+        'Maglagay ng buwanang budget at ipapakita ng WealthTrack kung magkano ang ligtas mong magagastos, at kung magkano pa ang natitira habang tumatagal ang buwan.',
+    'budgetPrompt.action': 'Maglagay ng budget',
+    'budgetPrompt.dismiss': 'I-dismiss',
     'budget.dailyMany': 'Puwede kang gumastos ng {amount} kada araw sa natitirang {days} araw.',
     'budget.dailyOne': 'Puwede kang gumastos ng {amount} sa huling araw ng buwan.',
     'budget.setLimit': 'Itakda ang limitasyon',
@@ -824,6 +842,7 @@ const ceb = {
     'expenses.hint': 'I-tap aron usbon · Dugayng pug-onga aron papason',
     'expenses.noMatchesTitle': 'Walay katugbang',
     'expenses.noMatchesMsg': 'Walay nakit-an para sa “{query}” karong buwana.',
+    'expenses.clearSearch': 'I-clear ang pangita',
     'expenses.emptyTitle': 'Walay gasto karong buwana',
     'expenses.emptyMsg': 'I-tap ang + aron irekord ang imong una.',
     'expenses.deleteTitle': 'Papason kining gastoha?',
@@ -859,7 +878,8 @@ const ceb = {
     'categories.title': 'Mga Kategorya',
     'categories.subtitle': 'Ayoha ang imong gasto',
     'categories.emptyTitle': 'Walay kategorya',
-    'categories.emptyMsg': 'Pagdugang og usa aron makarekord ka og gasto.',
+    'categories.emptyMsg':
+        'Ang kategorya nag-grupo sa imong gasto, mao nga ang listahan sa kantidad mahimong hulagway kung asa mopadulong ang kwarta.',
     'categories.add': 'Pagdugang og kategorya',
     'categories.new': 'Bag-ong kategorya',
     'categories.edit': 'Usbon ang kategorya',
@@ -885,7 +905,14 @@ const ceb = {
     'budget.couldNotSave': 'Wala ma-save',
     'budget.remaining': 'Nabilin',
     'budget.spentOf': 'Nagasto: {spent} sa {budget}',
-    'budget.spentNone': 'Nagasto: {spent} — walay budget',
+    'budget.noneHint':
+        'Wala pay limit karong buwana. Pagbutang sa ubos aron makita kung pila pa ang nabilin.',
+
+    'budgetPrompt.title': 'Planoha kining buwana',
+    'budgetPrompt.body':
+        'Pagbutang og binulan nga budget ug ipakita sa WealthTrack kung pila ang luwas nimong magasto, ug pila pa ang nabilin samtang nagpadayon ang buwan.',
+    'budgetPrompt.action': 'Pagbutang og budget',
+    'budgetPrompt.dismiss': 'I-dismiss',
     'budget.dailyMany': 'Pwede ka mogasto og {amount} kada adlaw sa nabiling {days} ka adlaw.',
     'budget.dailyOne': 'Pwede ka mogasto og {amount} sa kataposang adlaw sa buwan.',
     'budget.setLimit': 'Ibutang ang limit',

@@ -98,6 +98,11 @@ const ReportsScreen = ({ navigation }) => {
                             icon={BarChart3}
                             title={t('reports.emptyTitle', { year })}
                             message={t('reports.emptyMsg')}
+                            actionLabel={t('home.addExpense')}
+                            // This screen is pushed above the tabs rather than
+                            // inside them, so reaching the Add tab means
+                            // naming the tab navigator on the way.
+                            onAction={() => navigation.navigate('Main', { screen: 'Add' })}
                         />
                     </Card>
                 ) : (

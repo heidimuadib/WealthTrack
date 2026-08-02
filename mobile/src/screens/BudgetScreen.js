@@ -103,9 +103,14 @@ const BudgetScreen = () => {
         }
     };
 
+    const hasBudget = budget > 0;
     const remaining = budget - spent;
-    const isOver = remaining < 0;
-    const progress = budget > 0 ? spent / budget : 0;
+    // Over what? With no budget set, `remaining` is just spending with a minus
+    // sign in front, and this screen used to read that as being over budget —
+    // telling someone who has never set one that they had already broken it.
+    // Nobody is over a limit that does not exist.
+    const isOver = hasBudget && remaining < 0;
+    const progress = hasBudget ? spent / budget : 0;
 
     // Only meaningful for the month currently in progress.
     const dailyAllowance = useMemo(() => {
@@ -170,28 +175,37 @@ const BudgetScreen = () => {
                     style={styles.statusCard}
                 >
                     <Text style={styles.statusLabel}>
-                        {isOver ? t('card.overBudget') : t('budget.remaining')}
+                        {hasBudget
+                            ? isOver
+                                ? t('card.overBudget')
+                                : t('budget.remaining')
+                            : t('card.spentThisMonth')}
                     </Text>
+                    {/* With no budget, the only true figure is what has been
+                        spent. Showing a remainder of a limit that does not
+                        exist would be inventing one. */}
                     <Text style={styles.statusAmount}>
-                        {formatCurrency(Math.abs(remaining))}
+                        {formatCurrency(hasBudget ? Math.abs(remaining) : spent)}
                     </Text>
 
-                    <View style={styles.progress}>
-                        <ProgressBar
-                            progress={progress}
-                            color={isOver ? '#F2B8B5' : colors.onBrand}
-                            trackColor="rgba(255,255,255,0.22)"
-                            height={6}
-                        />
-                    </View>
+                    {hasBudget ? (
+                        <View style={styles.progress}>
+                            <ProgressBar
+                                progress={progress}
+                                color={isOver ? '#F2B8B5' : colors.onBrand}
+                                trackColor="rgba(255,255,255,0.22)"
+                                height={6}
+                            />
+                        </View>
+                    ) : null}
 
                     <Text style={styles.statusMeta}>
-                        {budget > 0
+                        {hasBudget
                             ? t('budget.spentOf', {
                                   spent: formatCurrency(spent),
                                   budget: formatCompact(budget),
                               })
-                            : t('budget.spentNone', { spent: formatCurrency(spent) })}
+                            : t('budget.noneHint')}
                     </Text>
                 </LinearGradient>
 
