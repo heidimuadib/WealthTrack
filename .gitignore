@@ -25,6 +25,10 @@ vendor/
 *.jks
 *.keystore
 !debug.keystore
+# Android release signing: this file holds the upload key passwords. The
+# .example alongside it documents the keys without carrying any of the values.
+keystore.properties
+!keystore.properties.example
 
 # Local databases and dumps
 *.db
