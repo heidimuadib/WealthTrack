@@ -4,3 +4,15 @@
 jest.mock('@react-native-async-storage/async-storage', () =>
     require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
+
+// The Sentry SDK binds to native modules at import time, which do not exist
+// under Jest. A default stub here keeps anything that merely imports the crash
+// reporter renderable; the tests that assert on the SDK replace this with their
+// own richer mock.
+jest.mock('@sentry/react-native', () => ({
+    init: jest.fn(),
+    captureException: jest.fn(),
+    withScope: jest.fn((callback) =>
+        callback({ setLevel: jest.fn(), setTag: jest.fn(), setContext: jest.fn() })
+    ),
+}));

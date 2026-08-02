@@ -307,6 +307,14 @@ const en = {
     'loading.reports': 'Loading your reports',
     'loading.categories': 'Loading your categories',
 
+    // Crash recovery. Deliberately says nothing about what threw: the stack is
+    // on its way to whoever can fix it, and to the person holding the phone it
+    // reads as though their money is gone.
+    'crash.title': 'The app ran into a problem',
+    'crash.message':
+        'Something unexpected happened and this screen had to stop. Your saved data is safe.',
+    'crash.reported': 'An anonymous report was sent so this can be fixed.',
+
     // Errors
     'errors.offline': 'Can’t reach the server. Check your connection and try again.',
     'errors.rateLimited': 'Too many requests. Wait a moment and try again.',
@@ -627,6 +635,11 @@ const fil = {
     'loading.reports': 'Nilo-load ang iyong mga report',
     'loading.categories': 'Nilo-load ang iyong mga kategorya',
 
+    'crash.title': 'May naganap na problema sa app',
+    'crash.message':
+        'May hindi inaasahang nangyari kaya huminto ang screen na ito. Ligtas ang naka-save mong data.',
+    'crash.reported': 'Nagpadala ng anonymous na report para maayos ito.',
+
     'errors.offline': 'Hindi maabot ang server. Suriin ang koneksyon at subukan muli.',
     'errors.rateLimited': 'Sobrang daming request. Sandali lang at subukan muli.',
     'errors.server': 'Nagkaproblema ang server. Subukan muli mamaya.',
@@ -941,6 +954,11 @@ const ceb = {
     'loading.budget': 'Gina-load ang imong budget',
     'loading.reports': 'Gina-load ang imong mga report',
     'loading.categories': 'Gina-load ang imong mga kategorya',
+
+    'crash.title': 'Naay problema nga miabot sa app',
+    'crash.message':
+        'Naay wala damha nga nahitabo maong mihunong kini nga screen. Luwas ang imong na-save nga data.',
+    'crash.reported': 'Nagpadala og anonymous nga report aron maayo kini.',
 
     'errors.offline': 'Dili maabot ang server. Susiha ang koneksyon ug sulayi pag-usab.',
     'errors.rateLimited': 'Sobra ka daghang request. Hulat kadiyot ug sulayi pag-usab.',

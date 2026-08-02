@@ -5,5 +5,11 @@
 import {AppRegistry} from 'react-native';
 import App from './App';
 import {name as appName} from './app.json';
+import {initCrashReporting} from './src/services/crashReporting';
+
+// Before the first component renders, so a crash during startup — the ones
+// that leave no screen to report from — is still caught. No-ops in development
+// and in any build with no DSN configured.
+initCrashReporting();
 
 AppRegistry.registerComponent(appName, () => App);
