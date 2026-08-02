@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,8 @@ import {
     RefreshControl,
     KeyboardAvoidingView,
     Platform,
+    Animated,
+    Easing,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { CalendarClock } from 'lucide-react-native';
@@ -22,6 +24,8 @@ import ErrorBanner from '../components/ErrorBanner';
 import { BudgetSkeleton } from '../components/ScreenSkeletons';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
@@ -38,6 +42,44 @@ const BudgetScreen = () => {
 
     const [period, setPeriod] = useState(currentMonthYear);
     const [draft, setDraft] = useState('');
+    const reducedMotion = useReducedMotion();
+
+    // A single short lift on the card the saved figure lands in. This screen
+    // stays mounted after a save, which is the whole reason it can carry an
+    // animation at all — the expense screens navigate away, and animating a
+    // surface on its way out is motion nobody sees.
+    const cardScale = useRef(new Animated.Value(1)).current;
+    const confirmAnim = useRef(null);
+
+    useEffect(
+        () => () => {
+            confirmAnim.current?.stop();
+        },
+        []
+    );
+
+    const confirmSaved = useCallback(() => {
+        if (reducedMotion) {
+            return;
+        }
+
+        confirmAnim.current?.stop();
+        confirmAnim.current = Animated.sequence([
+            Animated.timing(cardScale, {
+                toValue: 1.02,
+                duration: 110,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+            }),
+            Animated.timing(cardScale, {
+                toValue: 1,
+                duration: 130,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+            }),
+        ]);
+        confirmAnim.current.start();
+    }, [reducedMotion, cardScale]);
 
     const { alert, notify } = useFeedback();
 
@@ -78,6 +120,7 @@ const BudgetScreen = () => {
         const parsed = parseFloat(draft);
 
         if (!Number.isFinite(parsed) || parsed < 0) {
+            haptics.error();
             alert({
                 title: t('budget.invalidTitle'),
                 message: t('budget.invalidMsg'),
@@ -91,6 +134,8 @@ const BudgetScreen = () => {
                 month: period.month,
                 year: period.year,
             });
+            haptics.success();
+            confirmSaved();
             // The card above now shows the saved amount, so the field goes
             // back to empty rather than holding a stale copy of it.
             setDraft('');
@@ -99,6 +144,7 @@ const BudgetScreen = () => {
         } catch (err) {
             // The API returns a message naming the offending field, which is
             // more use than a blanket "please try again".
+            haptics.error();
             alert({ title: t('budget.couldNotSave'), message: errorMessage(err) });
         }
     };
@@ -169,6 +215,7 @@ const BudgetScreen = () => {
                     <ErrorBanner error={error} onRetry={retry} style={styles.banner} />
                 ) : null}
 
+                <Animated.View style={{ transform: [{ scale: cardScale }] }}>
                 <LinearGradient
                     colors={isOver ? dangerGradient : balanceGradient}
                     {...gradientAngles.diagonal}
@@ -208,6 +255,7 @@ const BudgetScreen = () => {
                             : t('budget.noneHint')}
                     </Text>
                 </LinearGradient>
+                </Animated.View>
 
                 {dailyAllowance ? (
                     <View style={styles.insight}>

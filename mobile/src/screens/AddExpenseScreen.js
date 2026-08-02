@@ -26,6 +26,7 @@ import { formatCurrency, formatDayLabel } from '../utils/format';
 import { pressKey, toAmount, fromAmount, formatDisplay } from '../utils/amountInput';
 import { readLastCategory, writeLastCategory } from '../utils/lastCategory';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
 
 // Stable reference for the not-yet-loaded case, so the effect that picks a
 // category is not re-run by a fresh [] on every render.
@@ -144,10 +145,14 @@ const AddExpenseScreen = ({ navigation, route }) => {
         try {
             if (editing) {
                 await updateExpense.mutateAsync({ id: editing.id, ...payload });
+                // After the server has confirmed it, never before. A buzz on
+                // submit would be celebrating a save that has not happened.
+                haptics.success();
                 navigation.goBack();
                 notify({ message: t('add.saved') });
             } else {
                 await createExpense.mutateAsync(payload);
+                haptics.success();
                 // Remembered only once the server has accepted it, so a
                 // rejected category never becomes the default.
                 writeLastCategory(selectedCategory);
@@ -159,6 +164,9 @@ const AddExpenseScreen = ({ navigation, route }) => {
                 notify({ message: t('add.added', { amount: formatCurrency(amount) }) });
             }
         } catch (err) {
+            // The user pressed save and it did not work — that is worth
+            // feeling. A background refetch failing is not.
+            haptics.error();
             setError(errorMessage(err));
         }
     };
@@ -180,9 +188,14 @@ const AddExpenseScreen = ({ navigation, route }) => {
         // that is about to vanish. Undo lives on the Expenses list instead.
         try {
             await deleteExpense.mutateAsync(editing.id);
+            // Warning rather than success. A deletion completing is not a
+            // small triumph, and buzzing happily as somebody's record
+            // disappears reads as gloating.
+            haptics.warning();
             navigation.goBack();
             notify({ message: t('add.deleted') });
         } catch (err) {
+            haptics.error();
             setError(errorMessage(err));
         }
     };

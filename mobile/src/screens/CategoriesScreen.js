@@ -31,6 +31,7 @@ import {
     useDeleteCategory,
 } from '../hooks/useCategories';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
 
 const CategoriesScreen = ({ navigation }) => {
     const theme = useTheme();
@@ -94,13 +95,16 @@ const CategoriesScreen = ({ navigation }) => {
                     name: name.trim(),
                     color,
                 });
+                haptics.success();
                 notify({ message: t('categories.updated') });
             } else {
                 const created = await createCategory.mutateAsync({ name: name.trim(), color });
+                haptics.success();
                 notify({ message: t('categories.created', { name: created.name }) });
             }
             setEditorOpen(false);
         } catch (err) {
+            haptics.error();
             setError(errorMessage(err));
         }
     };
@@ -122,12 +126,16 @@ const CategoriesScreen = ({ navigation }) => {
         // straight away rather than five seconds later.
         try {
             await deleteCategory.mutateAsync(category.id);
+            // Warning, not success: this removed something of theirs.
+            haptics.warning();
             notify({ message: t('categories.deleted') });
         } catch (err) {
             // A 409 is the API refusing to orphan expenses. Anything else —
             // most often no connection — is not about this category at all,
             // and titling it "Still in use" would send the user hunting for
             // expenses that are not the problem.
+            haptics.error();
+
             const stillInUse = err.response?.status === 409;
 
             alert({

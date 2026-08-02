@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Settings2 } from 'lucide-react-native';
 import { radius, spacing, useTheme } from '../theme';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import haptics from '../services/haptics';
+
+// The chip is the touch target, so the transform has to live on it rather than
+// on a wrapper — a scaled wrapper would move the target out from under the
+// finger that is still on it.
+const AnimatedChip = Animated.createAnimatedComponent(TouchableOpacity);
 
 // A single scrollable row rather than a picker sheet: choosing a category is
 // the one unavoidable decision when adding an expense, and a sheet turns it
@@ -13,10 +20,68 @@ const CategoryChips = ({ categories = [], value, onChange, onManage, manageLabel
     const { colors } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
 
+    const reducedMotion = useReducedMotion();
+
     const scrollRef = useRef(null);
     // id -> {x, width}, filled by each chip as it lays out.
     const chips = useRef(new Map());
     const viewport = useRef({ width: 0, offset: 0 });
+
+    // One value for the whole row, applied only to whichever chip is currently
+    // selected. A value per chip would be a dozen of them idling to animate
+    // one at a time.
+    const press = useRef(new Animated.Value(1)).current;
+    const pulse = useRef(null);
+
+    // Mirrors the selection so a repeat tap is refused immediately. `value` is
+    // the parent's state, which does not update until the next render — so
+    // three quick taps on the same chip would all read the old selection and
+    // all buzz.
+    const selected = useRef(value);
+
+    useEffect(() => {
+        selected.current = value;
+    }, [value]);
+
+    useEffect(
+        () => () => {
+            pulse.current?.stop();
+        },
+        []
+    );
+
+    // Fired from the tap rather than from the selection changing, which keeps
+    // it off the automatic first pick: arriving on the screen with a
+    // remembered category already chosen is not something the user just did.
+    const handlePress = useCallback(
+        (id) => {
+            // Re-tapping the chip that is already chosen changes nothing, so it
+            // buzzes about nothing. This is also what stops a double tap from
+            // firing twice.
+            if (id === selected.current) {
+                return;
+            }
+
+            selected.current = id;
+            haptics.light();
+            onChange(id);
+
+            if (reducedMotion) {
+                return;
+            }
+
+            pulse.current?.stop();
+            press.setValue(0.94);
+            pulse.current = Animated.timing(press, {
+                toValue: 1,
+                duration: 140,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+            });
+            pulse.current.start();
+        },
+        [onChange, reducedMotion, press]
+    );
 
     // The remembered category is often not the first one, and a chip selected
     // beyond the right edge reads as nothing being selected at all. Reading
@@ -88,10 +153,14 @@ const CategoryChips = ({ categories = [], value, onChange, onManage, manageLabel
                 const dot = category.color || colors.textMuted;
 
                 return (
-                    <TouchableOpacity
+                    <AnimatedChip
                         key={category.id}
-                        style={[styles.chip, active && styles.chipActive]}
-                        onPress={() => onChange(category.id)}
+                        style={[
+                            styles.chip,
+                            active && styles.chipActive,
+                            active ? { transform: [{ scale: press }] } : null,
+                        ]}
+                        onPress={() => handlePress(category.id)}
                         onLayout={(event) => {
                             const { x, width } = event.nativeEvent.layout;
                             chips.current.set(category.id, { x, width });
@@ -111,7 +180,7 @@ const CategoryChips = ({ categories = [], value, onChange, onManage, manageLabel
                         >
                             {category.name}
                         </Text>
-                    </TouchableOpacity>
+                    </AnimatedChip>
                 );
             })}
 

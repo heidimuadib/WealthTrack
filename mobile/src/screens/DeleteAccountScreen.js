@@ -20,6 +20,7 @@ import { authService } from '../services/api';
 import useAuthStore from '../store/authStore';
 import { canSubmitDeletion } from '../utils/deleteAccount';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
 
 // A screen of its own rather than a dialog. What is about to happen needs more
 // room than a dialog gives it, and a destructive action reached by two
@@ -85,15 +86,21 @@ const DeleteAccountScreen = ({ navigation }) => {
         try {
             await authService.deleteAccount(hasPassword ? password : undefined);
 
+            // Warning, never success. This is the most irreversible thing the
+            // app can do, and there is nothing here to congratulate.
+            haptics.warning();
+            notify({ message: t('delete.done') });
+
             // The account is gone, so the session standing on it has to go too.
             // logout() drops the token and the cached user from the device and
             // clears the React Query cache, which is what stops the next screen
             // from painting the deleted account's figures on its way out.
-            notify({ message: t('delete.done') });
             await logout();
         } catch (err) {
             // A rejected password is the one failure worth naming precisely;
             // everything else is already worded for the situation by the API.
+            haptics.error();
+
             const wrongPassword = hasPassword && err?.response?.status === 401;
             setError(wrongPassword ? t('delete.wrongPassword') : errorMessage(err));
             // The session is untouched on failure — nothing was deleted, so the

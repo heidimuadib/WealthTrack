@@ -20,6 +20,7 @@ import { ExpenseListSkeleton } from '../components/ScreenSkeletons';
 import { useFeedback } from '../components/FeedbackProvider';
 import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
 import { useExpenses, useDeleteExpense } from '../hooks/useExpenses';
@@ -89,6 +90,13 @@ const ExpensesScreen = ({ navigation }) => {
             return;
         }
 
+        // Light, not success. Nothing has been sent yet — this only takes the
+        // row off the screen, and the request is still five seconds away. The
+        // commit itself gets no haptic either: by then the snackbar has gone
+        // and the user has moved on, so a buzz would be about something they
+        // can no longer see.
+        haptics.light();
+
         // Held back until the snackbar expires. If the app dies first, nothing
         // was deleted.
         removeFromCache(expense.id);
@@ -96,13 +104,19 @@ const ExpensesScreen = ({ navigation }) => {
         notify({
             message: t('expenses.deleted'),
             actionLabel: t('expenses.undo'),
-            onAction: () => restoreToCache(expense),
+            onAction: () => {
+                haptics.light();
+                restoreToCache(expense);
+            },
             onTimeout: async () => {
                 try {
                     await deleteExpense.mutateAsync(expense.id);
                 } catch (err) {
                     // The row reappearing on its own looks like a bug unless
-                    // the reason lands with it.
+                    // the reason lands with it — and this one does buzz,
+                    // because it puts a row back on screen and raises a
+                    // second snackbar the user needs to notice.
+                    haptics.error();
                     restoreToCache(expense);
                     notify({
                         message: t('expenses.couldntDelete', { reason: errorMessage(err) }),

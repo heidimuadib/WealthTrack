@@ -21,6 +21,7 @@ import ActionSheet from '../components/ActionSheet';
 import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
 import useAuthStore from '../store/authStore';
@@ -69,9 +70,11 @@ const EditProfileScreen = ({ navigation }) => {
             // The server's copy is canonical — it trims and validates — so the
             // store takes the echoed user rather than the local draft.
             await setUser(response.data.user);
+            haptics.success();
             notify({ message: t('editProfile.saved') });
             navigation.goBack();
         } catch (err) {
+            haptics.error();
             alert({ title: t('editProfile.couldNotSave'), message: errorMessage(err) });
         } finally {
             setSaving(false);
@@ -92,6 +95,7 @@ const EditProfileScreen = ({ navigation }) => {
         try {
             const response = await authService.uploadAvatar(form);
             await setUser(response.data.user);
+            haptics.success();
             notify({ message: t('editProfile.photoUpdated') });
         } catch (err) {
             alert({ title: t('editProfile.photoFailed'), message: errorMessage(err) });
@@ -163,6 +167,7 @@ const EditProfileScreen = ({ navigation }) => {
         try {
             const response = await authService.removeAvatar();
             await setUser(response.data.user);
+            haptics.success();
             notify({ message: t('editProfile.photoRemoved') });
         } catch (err) {
             alert({ title: t('editProfile.photoFailed'), message: errorMessage(err) });

@@ -22,6 +22,7 @@ import { radius, spacing, useTheme } from '../theme';
 import { useLanguage, LANGUAGES } from '../i18n';
 import { PRIVACY_POLICY_URL } from '../config/api.config';
 import useAuthStore from '../store/authStore';
+import haptics from '../services/haptics';
 
 // "System" first, because following the device is the default and the option
 // most people want. Labels are translation keys, resolved at render.
@@ -185,7 +186,10 @@ const SettingsScreen = ({ navigation }) => {
                                 <TouchableOpacity
                                     key={option.code}
                                     style={[styles.segment, active && styles.segmentActive]}
-                                    onPress={() => setLanguage(option.code)}
+                                    onPress={() => {
+                                        haptics.light();
+                                        setLanguage(option.code);
+                                    }}
                                     activeOpacity={0.75}
                                     accessibilityRole="button"
                                     accessibilityState={{ selected: active }}
@@ -218,7 +222,10 @@ const SettingsScreen = ({ navigation }) => {
                                 <TouchableOpacity
                                     key={option.value}
                                     style={[styles.segment, active && styles.segmentActive]}
-                                    onPress={() => theme.setPreference(option.value)}
+                                    onPress={() => {
+                                        haptics.light();
+                                        theme.setPreference(option.value);
+                                    }}
                                     activeOpacity={0.75}
                                     accessibilityRole="button"
                                     accessibilityState={{ selected: active }}

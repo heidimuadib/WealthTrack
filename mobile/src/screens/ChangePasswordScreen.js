@@ -19,6 +19,7 @@ import { authService } from '../services/api';
 import useAuthStore from '../store/authStore';
 import { canSubmitPasswordChange, passwordFormProblem } from '../utils/passwordForm';
 import { errorMessage } from '../utils/error';
+import haptics from '../services/haptics';
 
 // One screen for two jobs, because they are the same job seen from either side
 // of having a password already. An account with one changes it and must prove
@@ -76,11 +77,14 @@ const ChangePasswordScreen = ({ navigation }) => {
             // now-true hasPassword in step.
             await login(data.user, data.token);
 
+            haptics.success();
             notify({ message: hasPassword ? t('password.changed') : t('password.set') });
             navigation.goBack();
         } catch (err) {
             // Worth naming precisely; everything else is already worded for
             // the situation by the API and translated on the way through.
+            haptics.error();
+
             const wrongCurrent = hasPassword && err?.response?.status === 401;
             setError(wrongCurrent ? t('password.wrongCurrent') : errorMessage(err));
             setSubmitting(false);

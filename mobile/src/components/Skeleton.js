@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, View, StyleSheet, Easing, AccessibilityInfo } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
+import { Animated, View, StyleSheet, Easing } from 'react-native';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // Placeholders shaped like the screen that is coming, rather than a spinner in
 // the middle of an empty canvas. The point is not decoration: a spinner says
@@ -23,42 +24,6 @@ const HALF_CYCLE = 700;
 // What a still frame settles on when motion is reduced — between the two, so
 // the blocks stay visible without ever being mistaken for real content.
 const STILL = 0.7;
-
-// Someone who has asked the OS for less animation should not get a pulsing
-// screen. RN exposes this on both platforms; the optional calls keep the
-// component working under a test renderer where the native module is absent.
-const useReducedMotion = () => {
-    const [reduced, setReduced] = useState(false);
-
-    useEffect(() => {
-        let alive = true;
-
-        // Wrapped rather than chained directly: the method is missing on some
-        // platforms and returns a non-promise on others, and a placeholder
-        // must not be able to throw on mount over a preference lookup.
-        Promise.resolve(AccessibilityInfo.isReduceMotionEnabled?.())
-            .then((value) => {
-                if (alive) {
-                    setReduced(!!value);
-                }
-            })
-            .catch(() => {
-                // Unreadable means no preference to honour; the pulse stays.
-            });
-
-        const subscription = AccessibilityInfo.addEventListener?.(
-            'reduceMotionChanged',
-            (value) => setReduced(!!value)
-        );
-
-        return () => {
-            alive = false;
-            subscription?.remove?.();
-        };
-    }, []);
-
-    return reduced;
-};
 
 // Wraps a screen's placeholders. Owns the animation, and is the single thing a
 // screen reader announces — every block inside is hidden from it, so a loading
