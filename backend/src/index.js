@@ -23,11 +23,31 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Helmet's Strict-Transport-Security (HSTS) header can cause Android's OkHttp
-// to silently upgrade HTTP connections to HTTPS, dropping responses.
-// Disabled for local dev — re-enable for production with HTTPS.
+// Development is anything that has not said otherwise, so a forgotten
+// NODE_ENV can only ever leave production hardening off — never switch
+// development into a mode the LAN phone cannot reach.
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Nginx terminates TLS on the same host and forwards over loopback, so every
+// request arrives from 127.0.0.1. Trusting loopback is what restores the real
+// client address in req.ip: without it the rate limiters below bucket every
+// user in the world together, and one noisy client locks out everyone else.
+// Deliberately not `true`, which would let any caller spoof X-Forwarded-For
+// and sidestep the limiter entirely.
+app.set('trust proxy', 'loopback');
+
+// HSTS is the one header that has to differ by environment. In development the
+// phone reaches this process over plain HTTP on the LAN, and Android's OkHttp
+// honours the header by silently upgrading to HTTPS — nothing is listening
+// there, so responses simply vanish. In production Nginx serves TLS only and
+// already redirects HTTP, so the header costs nothing and closes the gap the
+// redirect leaves open on a first visit.
+//
+// Six months, no preload: wealthtrack.duckdns.org sits under a shared public
+// suffix, and preloading commits a name far more permanently than a
+// certificate renewal cycle deserves.
 app.use(helmet({
-    hsts: false,
+    hsts: isProduction ? { maxAge: 15552000, includeSubDomains: true, preload: false } : false,
     contentSecurityPolicy: false,
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: false,
@@ -70,7 +90,7 @@ const redactSecrets = (body) => {
 
 // Request logging is a development aid. In production it is noise at best and
 // a slow leak of who is using the API and when at worst.
-if (process.env.NODE_ENV !== 'production') {
+if (!isProduction) {
     app.use((req, res, next) => {
         const start = Date.now();
         console.log(`\n========================================`);
