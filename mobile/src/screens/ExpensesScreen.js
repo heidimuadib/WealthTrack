@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { Receipt, Search, X } from 'lucide-react-native';
+import { Receipt, Search, SlidersHorizontal, X } from 'lucide-react-native';
 
 import Input from '../components/Input';
 import MonthSelector from '../components/MonthSelector';
@@ -17,13 +17,25 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import ScreenHeader from '../components/ScreenHeader';
 import { ExpenseListSkeleton } from '../components/ScreenSkeletons';
+import SwipeableRow from '../components/SwipeableRow';
+import CategoryFilter from '../components/CategoryFilter';
 import { useFeedback } from '../components/FeedbackProvider';
 import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
+import {
+    ALL_CATEGORIES,
+    filterExpenses,
+    emptyKind,
+    resolveSelectedCategory,
+    EMPTY_MONTH,
+    EMPTY_SEARCH,
+    EMPTY_CATEGORY,
+} from '../utils/expenseFilters';
 import { errorMessage } from '../utils/error';
 import haptics from '../services/haptics';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
 import { useExpenses, useDeleteExpense } from '../hooks/useExpenses';
+import { useCategories } from '../hooks/useCategories';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { queryKeys } from '../lib/queryKeys';
 import { currentMonthYear, formatCurrency, formatDayLabel } from '../utils/format';
@@ -31,6 +43,7 @@ import { currentMonthYear, formatCurrency, formatDayLabel } from '../utils/forma
 // Stable reference for the not-yet-loaded case, so the memos below are not
 // invalidated by a fresh [] on every render.
 const NO_EXPENSES = [];
+const NO_CATEGORIES = [];
 
 const ExpensesScreen = ({ navigation }) => {
     const theme = useTheme();
@@ -40,9 +53,27 @@ const ExpensesScreen = ({ navigation }) => {
 
     const [period, setPeriod] = useState(currentMonthYear);
     const [query, setQuery] = useState('');
+    // Not persisted across launches. A filter the user cannot see the reason
+    // for is worse than one they have to set again — opening the app to a list
+    // that is quietly hiding most of last week is a bug report, not a feature.
+    const [categoryId, setCategoryId] = useState(ALL_CATEGORIES);
+
+    // Only ever holds the one row that is open, so opening a second closes the
+    // first rather than leaving a trail of half-swiped rows behind.
+    const openRow = useRef(null);
+    // id -> swipeable handle, so a row can be closed without re-rendering the
+    // list to reach it.
+    const rowRefs = useRef(new Map());
+    // Ids whose deletion is already scheduled. Two taps landing in the same
+    // batch would otherwise schedule the commit twice.
+    const scheduled = useRef(new Set());
 
     const queryClient = useQueryClient();
     const expenseQuery = useExpenses(period);
+    // Already cached for the add screen, so this costs nothing new. Its failure
+    // is deliberately not folded into the screen's state: the filter row is a
+    // convenience, and losing it must not take the expense list with it.
+    const categoryQuery = useCategories();
     const deleteExpense = useDeleteExpense();
 
     useRefreshOnFocus(expenseQuery);
@@ -76,19 +107,39 @@ const ExpensesScreen = ({ navigation }) => {
             [...current, expense].sort((a, b) => new Date(b.date) - new Date(a.date))
         );
 
-    const handleDelete = async (expense) => {
-        const label = expense.notes || expense.category?.name || t('expenses.thisExpense');
+    // Named for the rotor, so the action reads as "Delete expense" rather
+    // than as an unlabelled custom action.
+    const ROW_ACTIONS = useMemo(
+        () => [{ name: 'delete', label: t('expenses.deleteAction') }],
+        [t]
+    );
 
-        const confirmed = await confirm({
-            title: t('expenses.deleteTitle'),
-            message: `${label} — ${formatCurrency(expense.amount)}`,
-            confirmLabel: t('expenses.deleteConfirm'),
-            destructive: true,
-        });
+    const closeOpenRow = useCallback(() => {
+        openRow.current?.close?.();
+        openRow.current = null;
+    }, []);
 
-        if (!confirmed) {
+    // A category can be deleted from the Categories screen while it is
+    // selected here, which would otherwise leave this list permanently empty
+    // with no obvious reason why.
+    const categories = categoryQuery.data;
+
+    useEffect(() => {
+        setCategoryId((current) => resolveSelectedCategory(current, categories));
+    }, [categories]);
+
+    // The delete itself, once something has decided it should happen. Reached
+    // two ways: tapping the revealed swipe action, which is already two
+    // deliberate movements, and the confirmation dialog behind long-press and
+    // the screen-reader action, which are one.
+    const performDelete = useCallback((expense) => {
+        // Two taps in one batch would schedule two commits for the same row.
+        if (scheduled.current.has(expense.id)) {
             return;
         }
+        scheduled.current.add(expense.id);
+
+        closeOpenRow();
 
         // Light, not success. Nothing has been sent yet — this only takes the
         // row off the screen, and the request is still five seconds away. The
@@ -106,6 +157,8 @@ const ExpensesScreen = ({ navigation }) => {
             actionLabel: t('expenses.undo'),
             onAction: () => {
                 haptics.light();
+                // Undone, so it may be deleted again later.
+                scheduled.current.delete(expense.id);
                 restoreToCache(expense);
             },
             onTimeout: async () => {
@@ -121,21 +174,49 @@ const ExpensesScreen = ({ navigation }) => {
                     notify({
                         message: t('expenses.couldntDelete', { reason: errorMessage(err) }),
                     });
+                } finally {
+                    // Committed or restored, the row is no longer pending.
+                    scheduled.current.delete(expense.id);
                 }
             },
         });
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [notify, deleteExpense, t, monthKey]);
 
-    const filtered = useMemo(() => {
-        const needle = query.trim().toLowerCase();
-        if (!needle) {
-            return expenses;
+    // Long-press and the screen-reader action are single movements, so they
+    // keep the dialog. The swipe path does not: revealing and then tapping is
+    // already two, and a third would make the fast path the slow one.
+    const confirmThenDelete = useCallback(
+        async (expense) => {
+            const label = expense.notes || expense.category?.name || t('expenses.thisExpense');
+
+            const confirmed = await confirm({
+                title: t('expenses.deleteTitle'),
+                message: `${label} — ${formatCurrency(expense.amount)}`,
+                confirmLabel: t('expenses.deleteConfirm'),
+                destructive: true,
+            });
+
+            if (confirmed) {
+                performDelete(expense);
+            }
+        },
+        [confirm, t, performDelete]
+    );
+
+    const selectedCategoryName = useMemo(() => {
+        if (categoryId === ALL_CATEGORIES) {
+            return '';
         }
-        return expenses.filter((expense) => {
-            const haystack = `${expense.notes || ''} ${expense.category?.name || ''}`;
-            return haystack.toLowerCase().includes(needle);
-        });
-    }, [expenses, query]);
+        return (categories ?? []).find((c) => c.id === categoryId)?.name ?? '';
+    }, [categories, categoryId]);
+
+    // One pass over a month of expenses, recomputed only when the list or
+    // either control changes.
+    const filtered = useMemo(
+        () => filterExpenses(expenses, { query, categoryId }),
+        [expenses, query, categoryId]
+    );
 
     // The API already sorts newest-first, so insertion order gives us
     // correctly ordered day groups for free.
@@ -163,12 +244,98 @@ const ExpensesScreen = ({ navigation }) => {
         [filtered]
     );
 
+    // Four different situations that all look like an empty list, and each
+    // wants a different next step. Offering "add your first expense" to
+    // somebody who has forty of them behind a filter is the app not knowing
+    // what is going on.
+    const renderEmpty = () => {
+        const kind = emptyKind({ monthCount: expenses.length, query, categoryId });
+
+        if (kind === EMPTY_MONTH) {
+            return (
+                <EmptyState
+                    icon={Receipt}
+                    title={t('expenses.emptyTitle')}
+                    message={t('expenses.emptyMsg')}
+                    actionLabel={t('home.addExpense')}
+                    onAction={() => navigation.navigate('Add')}
+                />
+            );
+        }
+
+        if (kind === EMPTY_SEARCH) {
+            return (
+                <EmptyState
+                    icon={Search}
+                    title={t('expenses.noMatchesTitle')}
+                    message={t('expenses.noMatchesMsg', { query })}
+                    actionLabel={t('expenses.clearSearch')}
+                    onAction={() => setQuery('')}
+                />
+            );
+        }
+
+        if (kind === EMPTY_CATEGORY) {
+            return (
+                <EmptyState
+                    icon={SlidersHorizontal}
+                    title={t('expenses.noCategoryTitle')}
+                    message={t('expenses.noCategoryMsg', { category: selectedCategoryName })}
+                    actionLabel={t('expenses.clearFilter')}
+                    onAction={() => setCategoryId(ALL_CATEGORIES)}
+                />
+            );
+        }
+
+        // Both. Clearing only one of them would usually still show nothing,
+        // so the single action clears the pair.
+        return (
+            <EmptyState
+                icon={SlidersHorizontal}
+                title={t('expenses.noMatchesTitle')}
+                message={t('expenses.noBothMsg', { query, category: selectedCategoryName })}
+                actionLabel={t('expenses.clearAll')}
+                onAction={() => {
+                    setQuery('');
+                    setCategoryId(ALL_CATEGORIES);
+                }}
+            />
+        );
+    };
+
     const renderItem = ({ item }) => (
+        <SwipeableRow
+            ref={(row) => {
+                if (!row) {
+                    return;
+                }
+                rowRefs.current.set(item.id, row);
+            }}
+            onSwipeOpen={() => {
+                // Opening a second row closes the first, so the list never
+                // carries a trail of half-swiped rows.
+                const next = rowRefs.current.get(item.id);
+                if (openRow.current && openRow.current !== next) {
+                    openRow.current.close?.();
+                }
+                openRow.current = next;
+            }}
+            onDelete={() => performDelete(item)}
+        >
         <TouchableOpacity
             style={styles.row}
             onPress={() => navigation.navigate('EditExpense', { expense: item })}
-            onLongPress={() => handleDelete(item)}
+            onLongPress={() => confirmThenDelete(item)}
             activeOpacity={0.7}
+            // The swipe is a shortcut, never the only way. A screen reader
+            // reaches the same delete through the actions rotor, and it goes
+            // through the confirmation rather than straight to removal.
+            accessibilityActions={ROW_ACTIONS}
+            onAccessibilityAction={(event) => {
+                if (event.nativeEvent.actionName === 'delete') {
+                    confirmThenDelete(item);
+                }
+            }}
         >
             <View
                 style={[
@@ -186,6 +353,7 @@ const ExpensesScreen = ({ navigation }) => {
             </View>
             <Text style={styles.rowAmount}>−{formatCurrency(item.amount)}</Text>
         </TouchableOpacity>
+        </SwipeableRow>
     );
 
     return (
@@ -209,6 +377,15 @@ const ExpensesScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         ) : null
                     }
+                />
+
+                {/* Below the search field rather than beside it: two controls
+                    sharing a row would leave neither enough width once a
+                    category name is longer than a word. */}
+                <CategoryFilter
+                    categories={categoryQuery.data ?? NO_CATEGORIES}
+                    value={categoryId}
+                    onChange={setCategoryId}
                 />
 
                 {filtered.length > 0 ? (
@@ -255,6 +432,10 @@ const ExpensesScreen = ({ navigation }) => {
                         </View>
                     )}
                     contentContainerStyle={styles.list}
+                    // Scrolling away from an open row is a clear signal it is
+                    // no longer wanted, and leaving it open puts a delete
+                    // button under a thumb that is reaching for a row.
+                    onScrollBeginDrag={closeOpenRow}
                     stickySectionHeadersEnabled={false}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
@@ -265,29 +446,7 @@ const ExpensesScreen = ({ navigation }) => {
                             colors={[colors.brand]}
                         />
                     }
-                    ListEmptyComponent={
-                        query ? (
-                            // Filtered-empty, not empty. There are expenses
-                            // here; the search just does not match any. The
-                            // useful next step is undoing the search, not
-                            // recording something new.
-                            <EmptyState
-                                icon={Search}
-                                title={t('expenses.noMatchesTitle')}
-                                message={t('expenses.noMatchesMsg', { query })}
-                                actionLabel={t('expenses.clearSearch')}
-                                onAction={() => setQuery('')}
-                            />
-                        ) : (
-                            <EmptyState
-                                icon={Receipt}
-                                title={t('expenses.emptyTitle')}
-                                message={t('expenses.emptyMsg')}
-                                actionLabel={t('home.addExpense')}
-                                onAction={() => navigation.navigate('Add')}
-                            />
-                        )
-                    }
+                    ListEmptyComponent={renderEmpty()}
                     ListFooterComponent={
                         filtered.length > 0 ? (
                             <Text style={styles.hint}>{t('expenses.hint')}</Text>

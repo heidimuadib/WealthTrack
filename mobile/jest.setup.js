@@ -5,6 +5,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
     require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// gesture-handler replaces parts of React Native's own touch machinery, and
+// importing it under Jest without this leaves react-native half-mocked —
+// which surfaces as useColorScheme not being a function, several layers away
+// from anything to do with gestures.
+require('react-native-gesture-handler/jestSetup');
+
 // Haptics are a native module too. Stubbed by default so anything that merely
 // imports the wrapper can be rendered; the tests that care assert against this
 // same trigger.
