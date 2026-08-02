@@ -268,6 +268,15 @@ const en = {
         'This build is not registered with Google. Its signing fingerprint has to be added to the Android OAuth client.',
     'google.failed': 'Google sign-in failed. Please try again.',
 
+    // Loading. Announced once per screen while its skeleton is up — the
+    // placeholder blocks themselves are hidden from screen readers.
+    'loading.generic': 'Loading',
+    'loading.dashboard': 'Loading your dashboard',
+    'loading.expenses': 'Loading your expenses',
+    'loading.budget': 'Loading your budget',
+    'loading.reports': 'Loading your reports',
+    'loading.categories': 'Loading your categories',
+
     // Errors
     'errors.offline': 'Can’t reach the server. Check your connection and try again.',
     'errors.rateLimited': 'Too many requests. Wait a moment and try again.',
@@ -553,6 +562,13 @@ const fil = {
         'Hindi nakarehistro sa Google ang build na ito. Kailangang idagdag ang signing fingerprint nito sa Android OAuth client.',
     'google.failed': 'Hindi natuloy ang Google sign-in. Subukan muli.',
 
+    'loading.generic': 'Naglo-load',
+    'loading.dashboard': 'Nilo-load ang iyong dashboard',
+    'loading.expenses': 'Nilo-load ang iyong mga gastos',
+    'loading.budget': 'Nilo-load ang iyong budget',
+    'loading.reports': 'Nilo-load ang iyong mga report',
+    'loading.categories': 'Nilo-load ang iyong mga kategorya',
+
     'errors.offline': 'Hindi maabot ang server. Suriin ang koneksyon at subukan muli.',
     'errors.rateLimited': 'Sobrang daming request. Sandali lang at subukan muli.',
     'errors.server': 'Nagkaproblema ang server. Subukan muli mamaya.',
@@ -832,6 +848,13 @@ const ceb = {
     'google.notRegistered':
         'Kining build wala marehistro sa Google. Kinahanglan idugang ang signing fingerprint niini sa Android OAuth client.',
     'google.failed': 'Wala molampos ang Google sign-in. Sulayi pag-usab.',
+
+    'loading.generic': 'Nag-load',
+    'loading.dashboard': 'Gina-load ang imong dashboard',
+    'loading.expenses': 'Gina-load ang imong mga gasto',
+    'loading.budget': 'Gina-load ang imong budget',
+    'loading.reports': 'Gina-load ang imong mga report',
+    'loading.categories': 'Gina-load ang imong mga kategorya',
 
     'errors.offline': 'Dili maabot ang server. Susiha ang koneksyon ug sulayi pag-usab.',
     'errors.rateLimited': 'Sobra ka daghang request. Hulat kadiyot ug sulayi pag-usab.',

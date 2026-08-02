@@ -6,7 +6,6 @@ import {
     SectionList,
     RefreshControl,
     TouchableOpacity,
-    ActivityIndicator,
 } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Receipt, Search, X } from 'lucide-react-native';
@@ -17,7 +16,9 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import ScreenHeader from '../components/ScreenHeader';
+import { ExpenseListSkeleton } from '../components/ScreenSkeletons';
 import { useFeedback } from '../components/FeedbackProvider';
+import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
 import { errorMessage } from '../utils/error';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
@@ -49,9 +50,13 @@ const ExpensesScreen = ({ navigation }) => {
 
     const expenses = expenseQuery.data ?? NO_EXPENSES;
     const error = expenseQuery.error;
-    const loading = expenseQuery.isPending;
     const hasData = expenseQuery.data !== undefined;
     const refreshing = expenseQuery.isRefetching;
+    const state = resolveViewState({
+        isPending: expenseQuery.isPending,
+        hasData,
+        error,
+    });
 
     const retry = useCallback(() => expenseQuery.refetch(), [expenseQuery]);
 
@@ -207,9 +212,9 @@ const ExpensesScreen = ({ navigation }) => {
                 ) : null}
             </View>
 
-            {loading ? (
-                <ActivityIndicator color={colors.brand} style={styles.loading} />
-            ) : error && !hasData ? (
+            {state === LOADING ? (
+                <ExpenseListSkeleton />
+            ) : state === ERROR ? (
                 // An empty list here would read as "you spent nothing this
                 // month" when the truth is that nothing could be fetched.
                 <ErrorState error={error} onRetry={retry} />
@@ -298,9 +303,6 @@ const createStyles = ({ colors, typography }) =>
     summaryTotal: {
         ...typography.h2,
         fontVariant: ['tabular-nums'],
-    },
-    loading: {
-        marginTop: spacing.xxl,
     },
     banner: {
         marginBottom: spacing.l,

@@ -7,7 +7,6 @@ import {
     RefreshControl,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { CalendarClock } from 'lucide-react-native';
@@ -20,8 +19,10 @@ import MonthSelector from '../components/MonthSelector';
 import ScreenHeader from '../components/ScreenHeader';
 import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
+import { BudgetSkeleton } from '../components/ScreenSkeletons';
 import { useFeedback } from '../components/FeedbackProvider';
 import { errorMessage } from '../utils/error';
+import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
 import { useExpenses } from '../hooks/useExpenses';
@@ -57,9 +58,15 @@ const BudgetScreen = () => {
     // zero, so a failed load was indistinguishable from a month with no budget
     // set — it confidently showed "₱0 remaining".
     const error = budgetQuery.error || expenseQuery.error;
-    const fetching = budgetQuery.isPending || expenseQuery.isPending;
     const hasData = budgetQuery.data !== undefined && expenseQuery.data !== undefined;
     const refreshing = budgetQuery.isRefetching || expenseQuery.isRefetching;
+    const state = resolveViewState({
+        isPending: budgetQuery.isPending || expenseQuery.isPending,
+        hasData,
+        error,
+    });
+    // The save button's own spinner, which is a different thing entirely from
+    // the screen not having loaded yet.
     const loading = setBudgetMutation.isPending;
 
     const retry = useCallback(() => {
@@ -123,9 +130,9 @@ const BudgetScreen = () => {
         >
             <ScreenHeader title={t('budget.title')} subtitle={t('budget.subtitle')} />
 
-            {fetching && !hasData ? (
-                <ActivityIndicator color={colors.brand} style={styles.loading} />
-            ) : error && !hasData ? (
+            {state === LOADING ? (
+                <BudgetSkeleton />
+            ) : state === ERROR ? (
                 <View style={styles.errorScreen}>
                     <ErrorState error={error} onRetry={retry} />
                 </View>
@@ -240,9 +247,6 @@ const createStyles = ({ colors, typography, shadows }) =>
     content: {
         padding: spacing.l,
         paddingBottom: spacing.xxxl,
-    },
-    loading: {
-        marginTop: spacing.xxl,
     },
     errorScreen: {
         flex: 1,

@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    ActivityIndicator,
     RefreshControl,
 } from 'react-native';
 import { BarChart3 } from 'lucide-react-native';
@@ -13,6 +12,7 @@ import { BarChart3 } from 'lucide-react-native';
 import Card from '../components/Card';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import { ReportsSkeleton } from '../components/ScreenSkeletons';
 import ScreenHeader from '../components/ScreenHeader';
 import YearSelector from '../components/YearSelector';
 import { radius, spacing, useTheme } from '../theme';
@@ -89,7 +89,7 @@ const ReportsScreen = ({ navigation }) => {
                 </View>
 
                 {query.isPending ? (
-                    <ActivityIndicator color={colors.brand} style={styles.loading} />
+                    <ReportsSkeleton />
                 ) : query.error ? (
                     <ErrorState error={query.error} onRetry={query.refetch} />
                 ) : total === 0 ? (
@@ -219,9 +219,6 @@ const createStyles = ({ colors, typography }) =>
         },
         yearRow: {
             marginBottom: spacing.l,
-        },
-        loading: {
-            marginTop: spacing.xxl,
         },
         statRow: {
             flexDirection: 'row',

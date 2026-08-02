@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     RefreshControl,
-    ActivityIndicator,
     TouchableOpacity,
 } from 'react-native';
 import { PieChart, Receipt, TrendingUp } from 'lucide-react-native';
@@ -18,12 +17,14 @@ import ErrorState from '../components/ErrorState';
 import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import SpendSummaryCard from '../components/SpendSummaryCard';
+import { DashboardSkeleton } from '../components/ScreenSkeletons';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
 import { useExpenses } from '../hooks/useExpenses';
 import { useBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import useAuthStore from '../store/authStore';
+import { resolveViewState, LOADING, ERROR } from '../utils/viewState';
 import {
     currentMonthYear,
     formatCurrency,
@@ -68,11 +69,16 @@ const HomeScreen = ({ navigation }) => {
     // A 401 clears the session and navigates away on its own, and the query
     // client is told not to retry it, so it never surfaces here.
     const error = expenseQuery.error || budgetQuery.error;
-    // Pending means nothing is cached yet. A refetch over existing data is not
-    // pending, which is what removes the spinner flash on every tab switch.
-    const loading = expenseQuery.isPending || budgetQuery.isPending;
     const hasData = expenseQuery.data !== undefined && budgetQuery.data !== undefined;
     const refreshing = expenseQuery.isRefetching || budgetQuery.isRefetching;
+    // Pending means nothing is cached yet. A refetch over existing data is not
+    // pending, which is what keeps the skeleton from flashing on every tab
+    // switch and on every pull-to-refresh.
+    const state = resolveViewState({
+        isPending: expenseQuery.isPending || budgetQuery.isPending,
+        hasData,
+        error,
+    });
 
     const retry = useCallback(() => {
         expenseQuery.refetch();
@@ -125,10 +131,35 @@ const HomeScreen = ({ navigation }) => {
             }));
     }, [expenses, totalSpent, categoryPalette]);
 
-    if (loading) {
+    // Outside the ScrollView on purpose: the greeting and avatar are identity,
+    // not content, so they hold still while figures move. They come from the
+    // session rather than a fetch, which is why they are also on screen
+    // underneath the skeleton instead of arriving with the data.
+    const header = (
+        <View style={styles.header}>
+            <View style={styles.headerText}>
+                <Text style={styles.greeting}>
+                    {t('home.greeting')}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
+                </Text>
+                <Text style={typography.caption}>{t('home.tagline')}</Text>
+            </View>
+
+            <TouchableOpacity
+                onPress={() => navigation.navigate('Settings')}
+                activeOpacity={0.75}
+                style={styles.avatar}
+                accessibilityLabel={t('home.openProfile')}
+            >
+                <Avatar user={user} size={44} />
+            </TouchableOpacity>
+        </View>
+    );
+
+    if (state === LOADING) {
         return (
-            <View style={styles.loading}>
-                <ActivityIndicator color={colors.brand} size="large" />
+            <View style={styles.container}>
+                {header}
+                <DashboardSkeleton />
             </View>
         );
     }
@@ -136,7 +167,7 @@ const HomeScreen = ({ navigation }) => {
     // Nothing ever loaded, so there are no figures to fall through to. The
     // empty state would claim ₱0 spent, which is a different — and wrong —
     // statement about the month.
-    if (error && !hasData) {
+    if (state === ERROR) {
         return (
             <View style={styles.errorScreen}>
                 <ErrorState error={error} onRetry={retry} />
@@ -146,25 +177,7 @@ const HomeScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            {/* Outside the ScrollView on purpose: the greeting and avatar are
-                identity, not content, so they hold still while figures move. */}
-            <View style={styles.header}>
-                <View style={styles.headerText}>
-                    <Text style={styles.greeting}>
-                        {t('home.greeting')}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
-                    </Text>
-                    <Text style={typography.caption}>{t('home.tagline')}</Text>
-                </View>
-
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('Settings')}
-                    activeOpacity={0.75}
-                    style={styles.avatar}
-                    accessibilityLabel={t('home.openProfile')}
-                >
-                    <Avatar user={user} size={44} />
-                </TouchableOpacity>
-            </View>
+            {header}
 
         <ScrollView
             style={styles.scroll}
@@ -307,12 +320,6 @@ const createStyles = ({ colors, typography }) =>
     },
     scroll: {
         flex: 1,
-    },
-    loading: {
-        flex: 1,
-        backgroundColor: colors.canvas,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     errorScreen: {
         flex: 1,

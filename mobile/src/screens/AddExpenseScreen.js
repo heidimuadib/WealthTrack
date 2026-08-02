@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    ActivityIndicator,
 } from 'react-native';
 import { CalendarDays, StickyNote, Trash2, Tag } from 'lucide-react-native';
 
@@ -14,6 +13,7 @@ import Button from '../components/Button';
 import ScreenHeader from '../components/ScreenHeader';
 import AmountKeypad from '../components/AmountKeypad';
 import CategoryChips from '../components/CategoryChips';
+import { CategoryChipsSkeleton } from '../components/ScreenSkeletons';
 import DatePickerModal from '../components/DatePickerModal';
 import ErrorBanner from '../components/ErrorBanner';
 import { useFeedback } from '../components/FeedbackProvider';
@@ -260,9 +260,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
                         <ErrorBanner error={categoryError} onRetry={categoryQuery.refetch} />
                     </View>
                 ) : categoriesLoading ? (
-                    <View style={styles.categoryPlaceholder}>
-                        <ActivityIndicator color={colors.brand} size="small" />
-                    </View>
+                    <CategoryChipsSkeleton />
                 ) : categories.length === 0 ? (
                     <View style={styles.categoryPlaceholder}>
                         <Tag color={colors.textMuted} size={16} />

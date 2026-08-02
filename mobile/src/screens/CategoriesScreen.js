@@ -8,7 +8,6 @@ import {
     Modal,
     Pressable,
     ScrollView,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
@@ -20,6 +19,7 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import ScreenHeader from '../components/ScreenHeader';
 import ColorPicker from '../components/ColorPicker';
+import { CategoryListSkeleton } from '../components/ScreenSkeletons';
 import { useFeedback } from '../components/FeedbackProvider';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
@@ -168,7 +168,7 @@ const CategoriesScreen = ({ navigation }) => {
             />
 
             {loading ? (
-                <ActivityIndicator color={colors.brand} style={styles.loading} />
+                <CategoryListSkeleton />
             ) : loadError ? (
                 <ErrorState error={loadError} onRetry={retry} />
             ) : (
@@ -261,9 +261,6 @@ const createStyles = ({ colors, typography }) =>
     container: {
         flex: 1,
         backgroundColor: colors.canvas,
-    },
-    loading: {
-        marginTop: spacing.xxl,
     },
     list: {
         paddingHorizontal: spacing.l,
