@@ -87,6 +87,19 @@ app.use(
     })
 );
 
+// The page a reset link opens. Served from the API host so the form posts
+// same-origin, and mounted here — ahead of the logger — so the URL carrying
+// the token is never written to stdout. Not cached: the page is short-lived by
+// nature and a cached copy is one more place a token could sit.
+app.use(
+    '/reset-password',
+    express.static(path.join(__dirname, '..', 'public', 'reset-password'), {
+        maxAge: 0,
+        index: 'index.html',
+        dotfiles: 'ignore',
+    })
+);
+
 app.use(express.json({ limit: '100kb' }));
 
 // Anything here would otherwise be written to the terminal, and scrolled past
@@ -153,6 +166,24 @@ app.use('/auth/google', authLimiter);
 // general one. skipSuccessfulRequests means the one call that works never
 // counts against anybody.
 app.use('/auth/account', authLimiter);
+
+// Harder than the credential endpoints, and counting successes too. Ten
+// attempts in fifteen minutes is far more than a person who forgot their
+// password needs, and far less than is useful for probing which addresses are
+// registered or for spraying somebody's inbox with reset mail they did not ask
+// for. skipSuccessfulRequests is deliberately not set here: a "success" is
+// exactly what an enumeration attempt looks like, since every request succeeds.
+const passwordResetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many attempts. Try again in a few minutes.' },
+});
+
+app.use('/auth/forgot-password', passwordResetLimiter);
+app.use('/auth/reset-password', passwordResetLimiter);
+app.use('/auth/password', authLimiter);
 app.use(apiLimiter);
 
 // Routes

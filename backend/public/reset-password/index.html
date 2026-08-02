@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A reset link must never end up in a search index or a referrer log. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>WealthTrack — Reset password</title>
+<!--
+  Self-contained. No fonts, scripts, stylesheets or images are fetched from
+  anywhere, so opening a page that carries a live reset token in its URL
+  contacts no third party that could log it.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #faf6f0; --surface: #ffffff; --text: #1c211f; --muted: #5c6664;
+    --border: #e9e1d6; --brand: #0e5a54; --on-brand: #ffffff;
+    --danger: #a6453d; --danger-tint: #fbeae8; --ok: #2e7d5b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15120e; --surface: #1e1a15; --text: #f2ece3; --muted: #a49a8c;
+      --border: #302921; --brand: #5fb3a8; --on-brand: #15120e;
+      --danger: #e2a09a; --danger-tint: #3a211f; --ok: #7cc9a6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 18px 64px; background: var(--bg); color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 420px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 8px; letter-spacing: -0.02em; }
+  p.lede { color: var(--muted); margin: 0 0 28px; }
+  label { display: block; font-size: 0.86rem; font-weight: 600; margin-bottom: 6px; }
+  input {
+    width: 100%; padding: 13px 14px; margin-bottom: 18px; font-size: 1rem;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px;
+  }
+  input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  button {
+    width: 100%; padding: 15px; font-size: 1rem; font-weight: 600;
+    color: var(--on-brand); background: var(--brand);
+    border: 0; border-radius: 12px; cursor: pointer;
+  }
+  button[disabled] { opacity: 0.55; cursor: default; }
+  .note { font-size: 0.85rem; color: var(--muted); margin-top: 18px; }
+  .msg { padding: 13px 15px; border-radius: 10px; margin-bottom: 20px; font-size: 0.92rem; }
+  .msg.bad { background: var(--danger-tint); color: var(--danger); }
+  .msg.good { background: var(--surface); border: 1px solid var(--border); color: var(--ok); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="heading">Reset your password</h1>
+  <p class="lede" id="lede">Choose a new password for your WealthTrack account.</p>
+
+  <div class="msg bad" id="error" hidden role="alert"></div>
+  <div class="msg good" id="done" hidden role="status"></div>
+
+  <form id="form">
+    <label for="password" id="labelNew">New password</label>
+    <input type="password" id="password" autocomplete="new-password" minlength="8" required>
+
+    <label for="confirm" id="labelConfirm">Confirm new password</label>
+    <input type="password" id="confirm" autocomplete="new-password" minlength="8" required>
+
+    <button type="submit" id="submit">Set new password</button>
+    <p class="note" id="note">At least 8 characters. The link works once.</p>
+  </form>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // Same three the app ships. Anything else falls back to English rather than
+  // being echoed into the page.
+  var STRINGS = {
+    en: {
+      heading: 'Reset your password',
+      lede: 'Choose a new password for your WealthTrack account.',
+      labelNew: 'New password',
+      labelConfirm: 'Confirm new password',
+      submit: 'Set new password',
+      working: 'Setting your password…',
+      note: 'At least 8 characters. The link works once.',
+      missing: 'This link is incomplete. Request a new one from the app.',
+      short: 'Password must be at least 8 characters.',
+      mismatch: 'Those two passwords do not match.',
+      failed: 'Could not reach the server. Check your connection and try again.',
+      done: 'Your password has been changed. Open WealthTrack and sign in with it.'
+    },
+    fil: {
+      heading: 'I-reset ang iyong password',
+      lede: 'Pumili ng bagong password para sa iyong WealthTrack account.',
+      labelNew: 'Bagong password',
+      labelConfirm: 'Kumpirmahin ang bagong password',
+      submit: 'Itakda ang bagong password',
+      working: 'Itinatakda ang password mo…',
+      note: 'Hindi bababa sa 8 characters. Isang beses lang gumagana ang link.',
+      missing: 'Kulang ang link na ito. Humiling ng bago mula sa app.',
+      short: 'Dapat hindi bababa sa 8 characters ang password.',
+      mismatch: 'Hindi magkatugma ang dalawang password.',
+      failed: 'Hindi maabot ang server. Suriin ang koneksyon at subukan muli.',
+      done: 'Napalitan na ang password mo. Buksan ang WealthTrack at mag-sign in gamit ito.'
+    },
+    ceb: {
+      heading: 'I-reset ang imong password',
+      lede: 'Pagpili og bag-ong password para sa imong WealthTrack account.',
+      labelNew: 'Bag-ong password',
+      labelConfirm: 'Kumpirmaha ang bag-ong password',
+      submit: 'Ibutang ang bag-ong password',
+      working: 'Gibutang ang imong password…',
+      note: 'Dili moubos sa 8 ka characters. Kausa ra molihok ang link.',
+      missing: 'Kulang kini nga link. Pangayo og bag-o gikan sa app.',
+      short: 'Ang password kinahanglan dili moubos sa 8 ka characters.',
+      mismatch: 'Dili magkatugma ang duha ka password.',
+      failed: 'Dili maabot ang server. Susiha ang koneksyon ug sulayi pag-usab.',
+      done: 'Nailisan na ang imong password. Ablihi ang WealthTrack ug mo-sign in gamit kini.'
+    }
+  };
+
+  var params = new URLSearchParams(window.location.search);
+  var token = params.get('token') || '';
+  var lang = params.get('lang');
+  var t = STRINGS[lang] || STRINGS.en;
+
+  // The token is held in a closure and nowhere else. Stripping the query
+  // string keeps it out of the address bar, out of the back/forward history
+  // entry, and out of anything the browser syncs or a bystander reads over a
+  // shoulder. Done before anything is rendered.
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
+  var el = function (id) { return document.getElementById(id); };
+  ['heading', 'lede', 'labelNew', 'labelConfirm', 'submit', 'note'].forEach(function (id) {
+    el(id).textContent = t[id];
+  });
+  document.documentElement.lang = STRINGS[lang] ? lang : 'en';
+
+  var form = el('form');
+  var error = el('error');
+  var done = el('done');
+  var submit = el('submit');
+  var busy = false;
+
+  var fail = function (message) {
+    error.textContent = message;
+    error.hidden = false;
+  };
+
+  if (!token) {
+    form.hidden = true;
+    fail(t.missing);
+    return;
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    if (busy) {
+      return;
+    }
+
+    error.hidden = true;
+
+    var password = el('password').value;
+    var confirm = el('confirm').value;
+
+    if (password.length < 8) {
+      return fail(t.short);
+    }
+
+    if (password !== confirm) {
+      return fail(t.mismatch);
+    }
+
+    busy = true;
+    submit.disabled = true;
+    submit.textContent = t.working;
+
+    // Same origin: this page is served by the API that answers it, so there is
+    // no host to configure and nothing cross-origin to allow.
+    fetch('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, newPassword: password })
+    })
+      .then(function (response) {
+        return response.json().then(function (body) {
+          return { ok: response.ok, body: body };
+        });
+      })
+      .then(function (result) {
+        if (!result.ok) {
+          throw new Error(result.body && result.body.error ? result.body.error : t.failed);
+        }
+
+        // Spent. Dropping it here means a reload cannot replay the request,
+        // and the fields go with it.
+        token = '';
+        form.hidden = true;
+        done.textContent = t.done;
+        done.hidden = false;
+      })
+      .catch(function (caught) {
+        busy = false;
+        submit.disabled = false;
+        submit.textContent = t.submit;
+        fail(caught && caught.message ? caught.message : t.failed);
+      });
+  });
+})();
+</script>
+</body>
+</html>

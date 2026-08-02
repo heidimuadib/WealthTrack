@@ -11,6 +11,9 @@ jest.mock('../../lib/prisma', () => ({
     expense: { deleteMany: jest.fn((args) => ({ op: 'expense.deleteMany', args })) },
     budget: { deleteMany: jest.fn((args) => ({ op: 'budget.deleteMany', args })) },
     category: { deleteMany: jest.fn((args) => ({ op: 'category.deleteMany', args })) },
+    passwordResetToken: {
+        deleteMany: jest.fn((args) => ({ op: 'resetToken.deleteMany', args })),
+    },
     $transaction: jest.fn(async (ops) => ops),
 }));
 
@@ -73,6 +76,7 @@ describe('DELETE /auth/account — what gets deleted', () => {
             'expense.deleteMany',
             'budget.deleteMany',
             'category.deleteMany',
+            'resetToken.deleteMany',
             'user.delete',
         ]);
         // Expenses before categories is not cosmetic: an expense row holds a
@@ -89,7 +93,7 @@ describe('DELETE /auth/account — what gets deleted', () => {
         expect(prisma.$transaction).toHaveBeenCalledTimes(1);
         // Half a deletion — expenses gone, account alive — is the one outcome
         // there is no way back from.
-        expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(4);
+        expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(5);
     });
 });
 
@@ -103,7 +107,9 @@ describe('DELETE /auth/account — ownership', () => {
         expect(ops[0].args).toEqual({ where: { userId: OWNER } });
         expect(ops[1].args).toEqual({ where: { userId: OWNER } });
         expect(ops[2].args).toEqual({ where: { userId: OWNER } });
-        expect(ops[3].args).toEqual({ where: { id: OWNER } });
+        // Reset tokens, which would otherwise outlive the account they open.
+        expect(ops[3].args).toEqual({ where: { userId: OWNER } });
+        expect(ops[4].args).toEqual({ where: { id: OWNER } });
     });
 
     it('ignores any id the caller supplies', async () => {

@@ -3,6 +3,14 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../lib/prisma');
 const { avatarPublicUrl, deleteAvatarFile } = require('../middleware/upload');
+const { sendPasswordResetEmail } = require('../services/email');
+const {
+    TOKEN_TTL_MINUTES,
+    createResetToken,
+    hashResetToken,
+    looksLikeResetToken,
+    passwordProblem,
+} = require('../lib/passwordReset');
 
 // Everything the app is allowed to know about an account, in one place so a
 // new profile field cannot reach one route's response and miss another's.
@@ -40,10 +48,21 @@ const DEFAULT_CATEGORIES = [
     { name: 'Other', color: '#7B8785', icon: 'circle-dashed' },
 ];
 
+// The stamp every token carries a copy of. Null for an account that has never
+// had a password — which keeps tokens issued before this existed valid, so
+// deploying it does not sign the whole userbase out.
+const passwordStamp = (user) =>
+    user?.passwordChangedAt ? new Date(user.passwordChangedAt).getTime() : null;
+
 // An hour was short enough that the app asked for the password again during
 // normal use, and there is no refresh token to soften that.
+//
+// pwdAt is what makes a reset able to end a session. A JWT cannot be recalled
+// once signed, so instead each one states which password it was minted
+// against, and the middleware refuses any token whose answer no longer matches
+// the account.
 const signToken = (user) =>
-    jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+    jwt.sign({ id: user.id, pwdAt: passwordStamp(user) }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     });
 
@@ -54,8 +73,11 @@ const register = async (req, res) => {
         return res.status(400).json({ error: 'Email is required' });
     }
 
-    if (typeof password !== 'string' || password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    // The one password rule, shared with reset and change so the three cannot
+    // drift into disagreeing about what a password is.
+    const problem = passwordProblem(password);
+    if (problem) {
+        return res.status(400).json({ error: problem });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -63,7 +85,9 @@ const register = async (req, res) => {
     try {
         const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existingUser) {
-            console.warn(`[AUTH REGISTER 400] User already exists: ${normalizedEmail}`);
+            // Deliberately unlogged. This used to print the address, which put
+            // an email in production stdout every time someone mistyped their
+            // way into an existing account.
             return res.status(400).json({ error: 'User already exists' });
         }
 
@@ -101,8 +125,11 @@ const login = async (req, res) => {
         const user = await prisma.user.findUnique({
             where: { email: email.trim().toLowerCase() },
         });
+        // None of the three failures below is logged. They used to print the
+        // address that failed, which is a record of who tried to sign in and
+        // when, written to production stdout, for no diagnostic gain — the
+        // status code already says a login was refused.
         if (!user) {
-            console.warn(`[AUTH LOGIN 400] User not found: ${email}`);
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
@@ -110,13 +137,11 @@ const login = async (req, res) => {
         // so would confirm the address is registered, so it fails like any
         // other wrong credential.
         if (!user.password) {
-            console.warn(`[AUTH LOGIN 400] Password login on a Google-only account`);
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.warn(`[AUTH LOGIN 400] Wrong password for: ${email}`);
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
@@ -376,6 +401,10 @@ const deleteAccount = async (req, res) => {
             prisma.expense.deleteMany({ where: { userId } }),
             prisma.budget.deleteMany({ where: { userId } }),
             prisma.category.deleteMany({ where: { userId } }),
+            // Reset tokens cascade on the foreign key as well; clearing them
+            // here keeps the order explicit and testable rather than relying
+            // on a database behaviour nothing in this file states.
+            prisma.passwordResetToken.deleteMany({ where: { userId } }),
             prisma.user.delete({ where: { id: userId } }),
         ]);
 
@@ -400,6 +429,250 @@ const deleteAccount = async (req, res) => {
     }
 };
 
+// One sentence, returned to everybody. An address that has an account, an
+// address that does not, a Google-only account with no password to reset, and
+// a database that is on fire all produce this and nothing else — because any
+// difference between them is a way to ask the server whether a person has a
+// WealthTrack account, and that is nobody's business to be able to ask.
+const GENERIC_RESET_RESPONSE = {
+    message: 'If an account exists for that email, reset instructions have been sent.',
+};
+
+// Deliberately vague, and the same for all four ways a link can fail: never
+// issued, already spent, expired, or belonging to an account since deleted.
+const INVALID_TOKEN_MESSAGE = 'That reset link is invalid or has expired';
+
+const forgotPassword = async (req, res) => {
+    const { email } = req.body || {};
+
+    // Normalised exactly as register and login do it, or a reset request for
+    // "Juan@Example.com " would silently miss the account it belongs to.
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+    // 254 is the longest an address can be. Anything longer is not a typo, and
+    // it still gets the same answer as everything else.
+    if (normalizedEmail === '' || normalizedEmail.length > 254) {
+        return res.json(GENERIC_RESET_RESPONSE);
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+            select: { id: true, password: true },
+        });
+
+        // A Google-only account has no password to reset. Sending it a link
+        // would be pointless; saying so would confirm the address is
+        // registered and reveal how it signs in.
+        if (user?.password) {
+            const { token, tokenHash, expiresAt } = createResetToken();
+
+            await prisma.$transaction([
+                // Asking again retires the earlier link. Two live links to one
+                // account doubles the window without helping anyone.
+                prisma.passwordResetToken.updateMany({
+                    where: { userId: user.id, consumedAt: null },
+                    data: { consumedAt: new Date() },
+                }),
+                prisma.passwordResetToken.create({
+                    data: { userId: user.id, tokenHash, expiresAt },
+                }),
+            ]);
+
+            const appUrl = process.env.PUBLIC_APP_URL;
+
+            if (appUrl) {
+                // Whitelisted, never echoed. The reset page is opened in a
+                // browser well away from the app's language setting, so the
+                // one the user was actually reading travels with the link.
+                const requested = req.body?.lang;
+                const lang = ['en', 'fil', 'ceb'].includes(requested) ? requested : 'en';
+                const resetUrl = `${appUrl.replace(/\/+$/, '')}/reset-password?token=${encodeURIComponent(token)}&lang=${lang}`;
+
+                // Local development only, off unless asked for by name. It is
+                // the one way to walk the flow end to end before an email
+                // provider exists, and it can never fire in production.
+                if (process.env.NODE_ENV !== 'production' && process.env.PASSWORD_RESET_DEBUG === 'true') {
+                    console.log('[dev] password reset link:', resetUrl);
+                }
+
+                // Not awaited. The response must not take longer for an
+                // address that has an account than for one that does not, and
+                // waiting on a mail provider is the largest difference there
+                // would be. Failures are logged inside the service.
+                sendPasswordResetEmail({
+                    to: normalizedEmail,
+                    resetUrl,
+                    minutes: TOKEN_TTL_MINUTES,
+                }).catch(() => {});
+            }
+        }
+
+        res.json(GENERIC_RESET_RESPONSE);
+    } catch (error) {
+        // Even this answers the same way. A 500 here would mean "that address
+        // exists but something broke", which is the disclosure the endpoint is
+        // built to avoid. Code only: never the address.
+        console.error('[auth] forgot-password failed', error?.code || 'unknown');
+        res.json(GENERIC_RESET_RESPONSE);
+    }
+};
+
+const resetPassword = async (req, res) => {
+    const { token, newPassword } = req.body || {};
+
+    // Shape first, so a flood of junk does not become a flood of queries.
+    if (!looksLikeResetToken(token)) {
+        return res.status(400).json({ error: INVALID_TOKEN_MESSAGE });
+    }
+
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+        return res.status(400).json({ error: problem });
+    }
+
+    try {
+        const record = await prisma.passwordResetToken.findUnique({
+            where: { tokenHash: hashResetToken(token) },
+            select: { id: true, userId: true, expiresAt: true, consumedAt: true },
+        });
+
+        // Never issued, already spent, or past its window — all the same
+        // sentence. A token whose account has since been deleted has been
+        // removed by the cascade, so it lands here too.
+        if (!record || record.consumedAt || record.expiresAt.getTime() <= Date.now()) {
+            return res.status(400).json({ error: INVALID_TOKEN_MESSAGE });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const changedAt = new Date();
+
+        // One interactive transaction so the token is spent, the password is
+        // written and the other links are retired together or not at all.
+        const outcome = await prisma.$transaction(async (tx) => {
+            // The guard is the whole single-use mechanism: the row is only
+            // claimed if it is still unclaimed, so two requests racing on the
+            // same link produce one winner and one count of zero, decided by
+            // the database rather than by whichever read happened first.
+            const claimed = await tx.passwordResetToken.updateMany({
+                where: { id: record.id, consumedAt: null },
+                data: { consumedAt: changedAt },
+            });
+
+            if (claimed.count === 0) {
+                return 'already_used';
+            }
+
+            await tx.user.update({
+                where: { id: record.userId },
+                // Stamping the change is what invalidates every session that
+                // was open before it — including whoever the reset was
+                // protecting the account from.
+                data: { password: hashedPassword, passwordChangedAt: changedAt },
+            });
+
+            // Any other outstanding link for this account dies with it.
+            await tx.passwordResetToken.updateMany({
+                where: { userId: record.userId, consumedAt: null },
+                data: { consumedAt: changedAt },
+            });
+
+            return 'reset';
+        });
+
+        if (outcome !== 'reset') {
+            return res.status(400).json({ error: INVALID_TOKEN_MESSAGE });
+        }
+
+        // No token is issued here. Signing someone in because they proved
+        // control of a mailbox is a weaker sign-in than the one they now have
+        // a password for, so they go and use it.
+        res.json({ reset: true });
+    } catch (error) {
+        console.error('[auth] reset-password failed', error?.code || 'unknown');
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
+// Serves both changing a password and setting the first one. Which of the two
+// it is comes from the account, not from the request: an account with a hash
+// must prove the old password, and an account without one cannot, because
+// there is nothing to prove it against.
+const changePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body || {};
+    const userId = req.user.id;
+
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+        return res.status(400).json({ error: problem });
+    }
+
+    try {
+        const account = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { ...PUBLIC_USER, passwordChangedAt: true },
+        });
+
+        if (!account) {
+            return res.status(401).json({ error: 'Account no longer exists' });
+        }
+
+        if (account.password) {
+            if (typeof currentPassword !== 'string' || currentPassword.length === 0) {
+                return res.status(400).json({ error: 'Current password is required' });
+            }
+
+            const matches = await bcrypt.compare(currentPassword, account.password);
+            if (!matches) {
+                return res.status(401).json({ error: 'Current password is incorrect' });
+            }
+
+            // Changing a password to itself leaves the user believing they
+            // have rotated a credential they have not.
+            const unchanged = await bcrypt.compare(newPassword, account.password);
+            if (unchanged) {
+                return res
+                    .status(400)
+                    .json({ error: 'New password must be different from the current one' });
+            }
+        }
+        // A Google-only account has no old password to demand. The live
+        // session is the proof, and the app asks for this deliberately behind
+        // a screen that says it is setting one rather than changing one.
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const changedAt = new Date();
+
+        const updated = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.update({
+                where: { id: userId },
+                data: { password: hashedPassword, passwordChangedAt: changedAt },
+                select: { ...PUBLIC_USER, passwordChangedAt: true },
+            });
+
+            // A password just changed by its owner also retires any reset link
+            // sitting unread in their mailbox.
+            await tx.passwordResetToken.updateMany({
+                where: { userId, consumedAt: null },
+                data: { consumedAt: changedAt },
+            });
+
+            return user;
+        });
+
+        // Every session opened before this moment is now refused, and that
+        // includes the one that just made the change. A fresh token keeps the
+        // person who did it signed in while everyone else is turned out.
+        res.json({ user: toPublicUser(updated), token: signToken(updated) });
+    } catch (error) {
+        if (error?.code === 'P2025') {
+            return res.status(401).json({ error: 'Account no longer exists' });
+        }
+        console.error('[auth] change-password failed', error?.code || 'unknown');
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -409,6 +682,9 @@ module.exports = {
     setAvatar,
     removeAvatar,
     deleteAccount,
+    forgotPassword,
+    resetPassword,
+    changePassword,
     // Exported for the test that pins the password hash inside this module.
     toPublicUser,
 };

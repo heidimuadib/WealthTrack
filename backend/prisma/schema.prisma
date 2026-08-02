@@ -21,11 +21,44 @@ model User {
   // (/uploads/avatars/...). Storing a path rather than an absolute URL means
   // the same row works from a LAN address in dev and a real host in production.
   avatarUrl String?
+  // Set whenever the password changes or is reset. Every JWT carries a copy of
+  // it, so a token minted before the change stops matching and is refused —
+  // which is what makes a reset actually end a stolen session, rather than
+  // only changing what the thief would need to steal next time. Null for an
+  // account that has never had a password, which is every Google-only one.
+  passwordChangedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   expenses  Expense[]
   budgets   Budget[]
   categories Category[]
+  resetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  // The SHA-256 of the token, never the token. Anyone who reads this table
+  // finds hashes they cannot turn back into working reset links; the raw value
+  // exists only in the email and in the request that spends it. Unique because
+  // a collision would let one link open two accounts.
+  tokenHash String   @unique
+  userId    Int
+  // Cascade here, unlike everywhere else in this schema. A reset token has no
+  // meaning without its account and no product rule depends on refusing the
+  // delete, which is exactly what made Category the opposite case.
+  // deleteAccount also clears them explicitly, so the ordering stays
+  // deterministic and testable.
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  // Set the moment the token is spent. Single use is enforced by an update
+  // that only matches rows where this is still null.
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+
+  // Lookup is always by hash. The other two serve invalidating one user's
+  // outstanding tokens, and sweeping expired rows.
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Category {
