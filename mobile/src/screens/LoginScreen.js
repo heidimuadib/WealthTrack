@@ -20,7 +20,7 @@ import { signInWithGoogle, GOOGLE_CANCELLED } from '../services/googleAuth';
 import useAuthStore from '../store/authStore';
 import { errorMessage } from '../utils/error';
 
-const LoginScreen = () => {
+const LoginScreen = ({ navigation }) => {
     const theme = useTheme();
     const { colors } = theme;
     const { t } = useLanguage();
@@ -168,6 +168,20 @@ const LoginScreen = () => {
 
                     {!isLogin ? <PasswordStrength password={password} /> : null}
 
+                    {/* Only while signing in. Offering it during registration
+                        would be asking about a password that does not exist
+                        yet. */}
+                    {isLogin ? (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('ForgotPassword')}
+                            style={styles.forgot}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('password.forgotLink')}
+                        >
+                            <Text style={styles.forgotText}>{t('password.forgotLink')}</Text>
+                        </TouchableOpacity>
+                    ) : null}
+
                     {error ? (
                         <View style={styles.errorBox}>
                             <Text style={styles.errorText}>{error}</Text>
@@ -282,6 +296,19 @@ const createStyles = ({ colors, typography, shadows }) =>
         marginHorizontal: spacing.m,
         fontSize: 12,
         color: colors.textMuted,
+    },
+    forgot: {
+        alignSelf: 'flex-end',
+        // Generous vertical padding rather than a bigger font: the tap target
+        // clears 44pt while the link stays visually quiet.
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.xs,
+        marginBottom: spacing.s,
+    },
+    forgotText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.brand,
     },
     switch: {
         marginTop: spacing.xl,

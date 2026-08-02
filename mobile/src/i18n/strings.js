@@ -315,6 +315,43 @@ const en = {
         'Something unexpected happened and this screen had to stop. Your saved data is safe.',
     'crash.reported': 'An anonymous report was sent so this can be fixed.',
 
+    // Forgot / change password
+    'password.forgotLink': 'Forgot password?',
+    'password.forgotTitle': 'Forgot password',
+    'password.forgotSubtitle': 'We’ll email you a link',
+    'password.forgotIntro':
+        'Enter the email address you signed up with and we’ll send a link to choose a new password.',
+    'password.emailLabel': 'Email',
+    'password.send': 'Send reset link',
+    // Says nothing about whether the address is registered — the server
+    // answers identically either way, and so must this.
+    'password.sentTitle': 'Check your email',
+    'password.sent':
+        'If an account exists for that email, reset instructions have been sent.',
+    'password.sentHint': 'The link works once and expires in 30 minutes.',
+    'password.backToLogin': 'Back to sign in',
+    'password.googleNote':
+        'Signed up with Google? You can sign in with the Google button instead.',
+
+    'password.changeTitle': 'Change password',
+    'password.changeSubtitle': 'Update your password',
+    'password.setTitle': 'Set a password',
+    'password.setSubtitle': 'Add a password to your account',
+    'password.setIntro':
+        'This account signs in with Google. Adding a password lets you sign in either way, and lets you recover the account by email.',
+    'password.current': 'Current password',
+    'password.new': 'New password',
+    'password.confirm': 'Confirm new password',
+    'password.newPlaceholder': 'At least 8 characters',
+    'password.save': 'Change password',
+    'password.saveSet': 'Set password',
+    'password.mismatch': 'Those two passwords do not match.',
+    'password.sameAsOld': 'Your new password must be different from the current one.',
+    'password.wrongCurrent': 'That current password is not right.',
+    'password.changed': 'Password changed',
+    'password.set': 'Password set',
+    'password.otherSessionsEnded': 'Any other devices signed in to this account were signed out.',
+
     // Errors
     'errors.offline': 'Can’t reach the server. Check your connection and try again.',
     'errors.rateLimited': 'Too many requests. Wait a moment and try again.',
@@ -363,6 +400,10 @@ const en = {
     'server.categoryDuplicate': 'You already have a category with that name.',
     'server.googleUnavailable': 'Google sign-in is not available right now.',
     'server.passwordRequiredForDelete': 'Password is required to delete this account',
+    'server.currentPasswordRequired': 'Current password is required',
+    'server.currentPasswordIncorrect': 'Current password is incorrect',
+    'server.passwordUnchanged': 'New password must be different from the current one',
+    'server.resetLinkInvalid': 'That reset link is invalid or has expired',
 };
 
 const fil = {
@@ -640,6 +681,40 @@ const fil = {
         'May hindi inaasahang nangyari kaya huminto ang screen na ito. Ligtas ang naka-save mong data.',
     'crash.reported': 'Nagpadala ng anonymous na report para maayos ito.',
 
+    'password.forgotLink': 'Nakalimutan ang password?',
+    'password.forgotTitle': 'Nakalimutang password',
+    'password.forgotSubtitle': 'Padadalhan ka namin ng link',
+    'password.forgotIntro':
+        'Ilagay ang email na ginamit mo sa pag-sign up at magpapadala kami ng link para pumili ng bagong password.',
+    'password.emailLabel': 'Email',
+    'password.send': 'Ipadala ang reset link',
+    'password.sentTitle': 'Tingnan ang email mo',
+    'password.sent':
+        'Kung may account para sa email na iyon, naipadala na ang mga tagubilin sa pag-reset.',
+    'password.sentHint': 'Isang beses lang gumagana ang link at mag-e-expire sa 30 minuto.',
+    'password.backToLogin': 'Bumalik sa pag-sign in',
+    'password.googleNote':
+        'Nag-sign up gamit ang Google? Puwede kang mag-sign in sa Google button na lang.',
+
+    'password.changeTitle': 'Palitan ang password',
+    'password.changeSubtitle': 'I-update ang password mo',
+    'password.setTitle': 'Maglagay ng password',
+    'password.setSubtitle': 'Magdagdag ng password sa account mo',
+    'password.setIntro':
+        'Naka-sign in ang account na ito gamit ang Google. Kapag naglagay ka ng password, puwede kang mag-sign in sa dalawang paraan at mabawi ang account gamit ang email.',
+    'password.current': 'Kasalukuyang password',
+    'password.new': 'Bagong password',
+    'password.confirm': 'Kumpirmahin ang bagong password',
+    'password.newPlaceholder': 'Hindi bababa sa 8 characters',
+    'password.save': 'Palitan ang password',
+    'password.saveSet': 'Itakda ang password',
+    'password.mismatch': 'Hindi magkatugma ang dalawang password.',
+    'password.sameAsOld': 'Dapat iba ang bagong password sa kasalukuyan.',
+    'password.wrongCurrent': 'Mali ang kasalukuyang password na iyon.',
+    'password.changed': 'Napalitan ang password',
+    'password.set': 'Naitakda ang password',
+    'password.otherSessionsEnded': 'Na-sign out ang ibang device na naka-sign in sa account na ito.',
+
     'errors.offline': 'Hindi maabot ang server. Suriin ang koneksyon at subukan muli.',
     'errors.rateLimited': 'Sobrang daming request. Sandali lang at subukan muli.',
     'errors.server': 'Nagkaproblema ang server. Subukan muli mamaya.',
@@ -683,6 +758,10 @@ const fil = {
     'server.categoryDuplicate': 'May kategorya ka nang ganyan ang pangalan.',
     'server.googleUnavailable': 'Hindi available ngayon ang Google sign-in.',
     'server.passwordRequiredForDelete': 'Kailangan ng password para burahin ang account na ito',
+    'server.currentPasswordRequired': 'Kailangan ang kasalukuyang password',
+    'server.currentPasswordIncorrect': 'Mali ang kasalukuyang password',
+    'server.passwordUnchanged': 'Dapat iba ang bagong password sa kasalukuyan',
+    'server.resetLinkInvalid': 'Hindi valid o expired na ang reset link na iyon',
 };
 
 const ceb = {
@@ -960,6 +1039,40 @@ const ceb = {
         'Naay wala damha nga nahitabo maong mihunong kini nga screen. Luwas ang imong na-save nga data.',
     'crash.reported': 'Nagpadala og anonymous nga report aron maayo kini.',
 
+    'password.forgotLink': 'Nalimtan ang password?',
+    'password.forgotTitle': 'Nalimtan nga password',
+    'password.forgotSubtitle': 'Padad-an ka namo og link',
+    'password.forgotIntro':
+        'Isulod ang email nga imong gigamit sa pag-sign up ug magpadala mi og link aron makapili ka og bag-ong password.',
+    'password.emailLabel': 'Email',
+    'password.send': 'Ipadala ang reset link',
+    'password.sentTitle': 'Tan-awa ang imong email',
+    'password.sent':
+        'Kon naay account para niana nga email, napadala na ang mga instruksyon sa pag-reset.',
+    'password.sentHint': 'Kausa ra molihok ang link ug mag-expire sa 30 ka minuto.',
+    'password.backToLogin': 'Balik sa pag-sign in',
+    'password.googleNote':
+        'Nag-sign up gamit ang Google? Pwede ka mo-sign in sa Google button na lang.',
+
+    'password.changeTitle': 'Usbon ang password',
+    'password.changeSubtitle': 'I-update ang imong password',
+    'password.setTitle': 'Pagbutang og password',
+    'password.setSubtitle': 'Pagdugang og password sa imong account',
+    'password.setIntro':
+        'Kini nga account mo-sign in pinaagi sa Google. Kon mobutang ka og password, pwede ka mo-sign in sa duha ka paagi ug mabawi ang account pinaagi sa email.',
+    'password.current': 'Karon nga password',
+    'password.new': 'Bag-ong password',
+    'password.confirm': 'Kumpirmaha ang bag-ong password',
+    'password.newPlaceholder': 'Dili moubos sa 8 ka characters',
+    'password.save': 'Usbon ang password',
+    'password.saveSet': 'Ibutang ang password',
+    'password.mismatch': 'Dili magkatugma ang duha ka password.',
+    'password.sameAsOld': 'Ang bag-ong password kinahanglan lahi sa karon.',
+    'password.wrongCurrent': 'Sayop kana nga karon nga password.',
+    'password.changed': 'Nailisan ang password',
+    'password.set': 'Nabutang ang password',
+    'password.otherSessionsEnded': 'Na-sign out ang ubang device nga naka-sign in niini nga account.',
+
     'errors.offline': 'Dili maabot ang server. Susiha ang koneksyon ug sulayi pag-usab.',
     'errors.rateLimited': 'Sobra ka daghang request. Hulat kadiyot ug sulayi pag-usab.',
     'errors.server': 'Naay problema ang server. Sulayi pag-usab unya.',
@@ -1003,6 +1116,10 @@ const ceb = {
     'server.categoryDuplicate': 'Naa na kay kategorya nga ingon ana og ngalan.',
     'server.googleUnavailable': 'Dili available karon ang Google sign-in.',
     'server.passwordRequiredForDelete': 'Kinahanglan ang password aron papason kini nga account',
+    'server.currentPasswordRequired': 'Kinahanglan ang karon nga password',
+    'server.currentPasswordIncorrect': 'Sayop ang karon nga password',
+    'server.passwordUnchanged': 'Ang bag-ong password kinahanglan lahi sa karon',
+    'server.resetLinkInvalid': 'Dili na balido o expired na kana nga reset link',
 };
 
 export const STRINGS = { en, fil, ceb };

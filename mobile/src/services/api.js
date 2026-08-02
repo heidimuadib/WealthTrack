@@ -78,6 +78,16 @@ export const authService = {
             timeout: 60000,
         }),
     removeAvatar: () => api.delete('/auth/avatar'),
+    // The language travels with the request because the reset link is opened
+    // in a browser, well away from the app that knows which one to use.
+    forgotPassword: (email, lang) => api.post('/auth/forgot-password', { email, lang }),
+    // currentPassword is omitted for an account that has none — the server
+    // decides which of the two this is, from the account rather than the body.
+    changePassword: (currentPassword, newPassword) =>
+        api.put('/auth/password', {
+            ...(currentPassword ? { currentPassword } : {}),
+            newPassword,
+        }),
     // No id travels with this: the server deletes whichever account the token
     // names. The password is sent only for accounts that have one — a Google
     // account has none to prove, and the server knows which is which without

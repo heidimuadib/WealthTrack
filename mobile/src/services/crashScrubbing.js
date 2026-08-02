@@ -11,17 +11,32 @@
 
 const REDACTED = '[redacted]';
 
-// Ordered roughly by how badly each one would matter if it escaped.
+// Ordered roughly by how badly each one would matter if it escaped. Each entry
+// is [pattern, replacement]: most are redacted whole, but the two that match a
+// key and its value keep the key, because "a token was here" is diagnostic
+// while the token itself is a live credential.
 const PATTERNS = [
     // A JWT is a live credential until it expires.
-    /\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]+)?/g,
-    /\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi,
+    [/\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]+)?/g, REDACTED],
+    [/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, REDACTED],
+    // A password reset token is a single-use key to somebody's account, and it
+    // travels in a URL — the one place a secret is most likely to be picked up
+    // by something that logs it in passing.
+    [
+        /([?&](?:token|password|newPassword|currentPassword)=)[^&\s"'#]+/gi,
+        `$1${REDACTED}`,
+    ],
+    // The same fields as they appear in a serialised request or response body.
+    [
+        /("(?:token|password|newPassword|currentPassword)"\s*:\s*")[^"]*/gi,
+        `$1${REDACTED}`,
+    ],
     // Avatar paths are unguessable-but-public, so one in a report is a working
     // link to someone's face.
-    /\/uploads\/avatars\/[A-Za-z0-9._-]+/g,
-    /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+    [/\/uploads\/avatars\/[A-Za-z0-9._-]+/g, REDACTED],
+    [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, REDACTED],
     // Peso figures, with or without grouping — the amounts themselves.
-    /₱\s?\d[\d,]*(?:\.\d{1,2})?/g,
+    [/₱\s?\d[\d,]*(?:\.\d{1,2})?/g, REDACTED],
 ];
 
 export const scrubText = (value) => {
@@ -29,7 +44,10 @@ export const scrubText = (value) => {
         return value;
     }
 
-    return PATTERNS.reduce((text, pattern) => text.replace(pattern, REDACTED), value);
+    return PATTERNS.reduce(
+        (text, [pattern, replacement]) => text.replace(pattern, replacement),
+        value
+    );
 };
 
 // Breadcrumbs are where user data leaks in without anyone deciding to send it:

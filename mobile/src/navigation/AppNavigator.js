@@ -15,6 +15,8 @@ import ReportsScreen from '../screens/ReportsScreen';
 import LoginScreen from '../screens/LoginScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
@@ -167,9 +169,16 @@ const AppNavigator = () => {
                             branch is unmounted once the session goes, which is
                             what removes it the instant the account is gone. */}
                         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+                        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                     </>
                 ) : (
-                    <Stack.Screen name="Login" component={LoginScreen} />
+                    <>
+                        <Stack.Screen name="Login" component={LoginScreen} />
+                        {/* In the signed-out branch, because someone who has
+                            forgotten their password is by definition not
+                            signed in. */}
+                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                    </>
                 )}
             </Stack.Navigator>
         </NavigationContainer>

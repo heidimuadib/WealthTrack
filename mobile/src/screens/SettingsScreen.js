@@ -11,6 +11,7 @@ import {
     Moon,
     ShieldCheck,
     Trash2,
+    KeyRound,
 } from 'lucide-react-native';
 
 import Card from '../components/Card';
@@ -118,6 +119,40 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={styles.rowMain}>
                             <Text style={styles.rowTitle}>{t('settings.categories')}</Text>
                             <Text style={styles.rowMeta}>{t('settings.categoriesMeta')}</Text>
+                        </View>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                    </TouchableOpacity>
+
+                    {/* Labelled by what it will actually do. An account that
+                        signs in with Google has no password to change, so
+                        offering "Change password" would open a screen asking
+                        for one that does not exist. hasPassword comes from the
+                        server, not from guessing at the email or the Google id. */}
+                    <TouchableOpacity
+                        style={[styles.row, styles.rowDivider]}
+                        onPress={() => navigation.navigate('ChangePassword')}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                            user?.hasPassword
+                                ? t('password.changeTitle')
+                                : t('password.setTitle')
+                        }
+                    >
+                        <View style={styles.rowIcon}>
+                            <KeyRound color={colors.brand} size={18} />
+                        </View>
+                        <View style={styles.rowMain}>
+                            <Text style={styles.rowTitle}>
+                                {user?.hasPassword
+                                    ? t('password.changeTitle')
+                                    : t('password.setTitle')}
+                            </Text>
+                            <Text style={styles.rowMeta}>
+                                {user?.hasPassword
+                                    ? t('password.changeSubtitle')
+                                    : t('password.setSubtitle')}
+                            </Text>
                         </View>
                         <ChevronRight color={colors.textMuted} size={18} />
                     </TouchableOpacity>

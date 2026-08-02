@@ -178,6 +178,68 @@ describe('scrubBreadcrumb', () => {
     });
 });
 
+describe('password reset data', () => {
+    const RESET_TOKEN = 'V1StGXR8_Z5jdHi6B-myTabcdefghijklmnopqrstuvwx';
+    const RESET_URL = `https://wealthtrack.duckdns.org/reset-password?token=${RESET_TOKEN}&lang=fil`;
+
+    it('redacts the token out of a reset link but leaves the link recognisable', () => {
+        const scrubbed = scrubText(`opened ${RESET_URL}`);
+
+        expect(scrubbed).not.toContain(RESET_TOKEN);
+        // "a reset link failed" is the diagnostic part, and it survives.
+        expect(scrubbed).toContain('/reset-password?token=');
+        expect(scrubbed).toContain('[redacted]');
+    });
+
+    it('redacts password fields out of a serialised body', () => {
+        const body = JSON.stringify({
+            token: RESET_TOKEN,
+            newPassword: 'a-good-password',
+            currentPassword: 'the-old-one',
+        });
+
+        const scrubbed = scrubText(body);
+
+        expect(scrubbed).not.toContain(RESET_TOKEN);
+        expect(scrubbed).not.toContain('a-good-password');
+        expect(scrubbed).not.toContain('the-old-one');
+    });
+
+    it('redacts a password passed in a query string', () => {
+        expect(scrubText('POST /auth/password?currentPassword=hunter2')).not.toContain('hunter2');
+    });
+
+    it('strips a reset link out of an event, wherever it landed', () => {
+        const safe = scrubEvent({
+            message: `Crash after opening ${RESET_URL}`,
+            request: { url: RESET_URL, data: { token: RESET_TOKEN, newPassword: 'secret123' } },
+            exception: { values: [{ value: `reset failed for ${RESET_URL}` }] },
+            breadcrumbs: [
+                { category: 'xhr', data: { url: RESET_URL } },
+                { category: 'console', message: `token=${RESET_TOKEN}` },
+                { category: 'navigation', data: { from: 'Login', to: 'ForgotPassword' } },
+            ],
+        });
+
+        const serialised = JSON.stringify(safe);
+        expect(serialised).not.toContain(RESET_TOKEN);
+        expect(serialised).not.toContain('secret123');
+        // The one breadcrumb worth keeping — which screen they were on — stays.
+        expect(safe.breadcrumbs).toHaveLength(1);
+        expect(safe.breadcrumbs[0].data).toEqual({ from: 'Login', to: 'ForgotPassword' });
+    });
+
+    it('keeps an email out of a forgot-password crash', () => {
+        const safe = scrubEvent({
+            message: 'forgot-password failed',
+            request: { data: { email: 'juan.delacruz@example.com' } },
+            breadcrumbs: [{ category: 'console', message: 'requesting reset for juan.delacruz@example.com' }],
+        });
+
+        expect(JSON.stringify(safe)).not.toContain('juan.delacruz');
+    });
+});
+
 describe('a realistic event, end to end', () => {
     it('lets nothing sensitive through', () => {
         const safe = scrubEvent({
