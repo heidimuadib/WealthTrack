@@ -173,6 +173,36 @@ const en = {
     'settings.logout': 'Log out',
     'settings.logoutTitle': 'Log out?',
     'settings.logoutMsg': 'You will need to sign in again.',
+    'settings.privacy': 'Privacy policy',
+    'settings.privacyMeta': 'How your data is handled',
+    'settings.privacyFailed': 'Could not open the privacy policy.',
+    'settings.deleteAccount': 'Delete account',
+    'settings.deleteAccountMeta': 'Permanently remove your data',
+
+    // Delete account
+    'delete.title': 'Delete account',
+    'delete.subtitle': 'This cannot be undone',
+    'delete.heading': 'This permanently deletes your account',
+    'delete.bulletExpenses': 'Every expense you have recorded',
+    'delete.bulletBudgets': 'Every budget you have set',
+    'delete.bulletCategories': 'Every category you have created',
+    'delete.bulletProfile': 'Your name, email address, and profile photo',
+    'delete.irreversible':
+        'There is no undo and no recovery. Once deleted, this data cannot be restored.',
+    'delete.passwordLabel': 'Enter your password to confirm',
+    'delete.googleNote':
+        'This account signs in with Google, so there is no password to check. Type the word below to confirm instead.',
+    // The word typed to confirm. Translated, because being asked to type an
+    // English word is a poor last gate in front of something irreversible.
+    'delete.phrase': 'DELETE',
+    'delete.phraseLabel': 'Type {phrase} to confirm',
+    'delete.action': 'Delete my account',
+    'delete.confirmTitle': 'Delete your account?',
+    'delete.confirmMsg': 'Everything above is removed immediately. This cannot be undone.',
+    'delete.confirmAction': 'Delete forever',
+    'delete.failed': 'Could not delete your account',
+    'delete.wrongPassword': 'That password is not right.',
+    'delete.done': 'Your account has been deleted',
 
     // Edit profile
     'editProfile.title': 'Edit profile',
@@ -324,6 +354,7 @@ const en = {
     'server.expenseNotFound': 'Expense not found',
     'server.categoryDuplicate': 'You already have a category with that name.',
     'server.googleUnavailable': 'Google sign-in is not available right now.',
+    'server.passwordRequiredForDelete': 'Password is required to delete this account',
 };
 
 const fil = {
@@ -477,6 +508,33 @@ const fil = {
     'settings.logout': 'Mag-log out',
     'settings.logoutTitle': 'Mag-log out?',
     'settings.logoutMsg': 'Kakailanganin mong mag-sign in muli.',
+    'settings.privacy': 'Patakaran sa privacy',
+    'settings.privacyMeta': 'Kung paano hinahawakan ang data mo',
+    'settings.privacyFailed': 'Hindi mabuksan ang patakaran sa privacy.',
+    'settings.deleteAccount': 'Burahin ang account',
+    'settings.deleteAccountMeta': 'Permanenteng alisin ang data mo',
+
+    'delete.title': 'Burahin ang account',
+    'delete.subtitle': 'Hindi na ito maibabalik',
+    'delete.heading': 'Permanenteng buburahin nito ang account mo',
+    'delete.bulletExpenses': 'Lahat ng gastos na naitala mo',
+    'delete.bulletBudgets': 'Lahat ng budget na itinakda mo',
+    'delete.bulletCategories': 'Lahat ng kategoryang ginawa mo',
+    'delete.bulletProfile': 'Ang pangalan, email, at larawan mo',
+    'delete.irreversible':
+        'Walang undo at walang pagbawi. Kapag nabura na, hindi na maibabalik ang data na ito.',
+    'delete.passwordLabel': 'Ilagay ang password mo para kumpirmahin',
+    'delete.googleNote':
+        'Naka-sign in ang account na ito gamit ang Google, kaya walang password na masusuri. I-type na lang ang salita sa ibaba.',
+    'delete.phrase': 'BURAHIN',
+    'delete.phraseLabel': 'I-type ang {phrase} para kumpirmahin',
+    'delete.action': 'Burahin ang account ko',
+    'delete.confirmTitle': 'Burahin ang account mo?',
+    'delete.confirmMsg': 'Aalisin agad ang lahat ng nasa itaas. Hindi na ito maibabalik.',
+    'delete.confirmAction': 'Burahin nang tuluyan',
+    'delete.failed': 'Hindi mabura ang account mo',
+    'delete.wrongPassword': 'Mali ang password na iyon.',
+    'delete.done': 'Nabura na ang account mo',
 
     'editProfile.title': 'I-edit ang profile',
     'editProfile.subtitle': 'Ang iyong mga detalye',
@@ -611,6 +669,7 @@ const fil = {
     'server.expenseNotFound': 'Hindi mahanap ang gastos',
     'server.categoryDuplicate': 'May kategorya ka nang ganyan ang pangalan.',
     'server.googleUnavailable': 'Hindi available ngayon ang Google sign-in.',
+    'server.passwordRequiredForDelete': 'Kailangan ng password para burahin ang account na ito',
 };
 
 const ceb = {
@@ -764,6 +823,33 @@ const ceb = {
     'settings.logout': 'Mag-log out',
     'settings.logoutTitle': 'Mag-log out?',
     'settings.logoutMsg': 'Kinahanglan ka mo-sign in pag-usab.',
+    'settings.privacy': 'Palisiya sa privacy',
+    'settings.privacyMeta': 'Giunsa pagdumala ang imong data',
+    'settings.privacyFailed': 'Wala maabli ang palisiya sa privacy.',
+    'settings.deleteAccount': 'Papasa ang account',
+    'settings.deleteAccountMeta': 'Permanenteng kuhaon ang imong data',
+
+    'delete.title': 'Papasa ang account',
+    'delete.subtitle': 'Dili na kini mabawi',
+    'delete.heading': 'Permanenteng papason niini ang imong account',
+    'delete.bulletExpenses': 'Tanang gasto nga imong narekord',
+    'delete.bulletBudgets': 'Tanang budget nga imong gibutang',
+    'delete.bulletCategories': 'Tanang kategorya nga imong gihimo',
+    'delete.bulletProfile': 'Imong ngalan, email, ug litrato',
+    'delete.irreversible':
+        'Walay undo ug walay pagbawi. Kon mapapas na, dili na mabalik kini nga data.',
+    'delete.passwordLabel': 'Isulod ang imong password aron makumpirma',
+    'delete.googleNote':
+        'Kini nga account mo-sign in pinaagi sa Google, busa walay password nga masusi. I-type na lang ang pulong sa ubos.',
+    'delete.phrase': 'PAPASA',
+    'delete.phraseLabel': 'I-type ang {phrase} aron makumpirma',
+    'delete.action': 'Papasa ang akong account',
+    'delete.confirmTitle': 'Papason ang imong account?',
+    'delete.confirmMsg': 'Kuhaon dayon ang tanan sa taas. Dili na kini mabawi.',
+    'delete.confirmAction': 'Papasa hangtod sa hangtod',
+    'delete.failed': 'Wala mapapas ang imong account',
+    'delete.wrongPassword': 'Sayop kana nga password.',
+    'delete.done': 'Napapas na ang imong account',
 
     'editProfile.title': 'I-edit ang profile',
     'editProfile.subtitle': 'Imong mga detalye',
@@ -898,6 +984,7 @@ const ceb = {
     'server.expenseNotFound': 'Wala makit-i ang gasto',
     'server.categoryDuplicate': 'Naa na kay kategorya nga ingon ana og ngalan.',
     'server.googleUnavailable': 'Dili available karon ang Google sign-in.',
+    'server.passwordRequiredForDelete': 'Kinahanglan ang password aron papason kini nga account',
 };
 
 export const STRINGS = { en, fil, ceb };

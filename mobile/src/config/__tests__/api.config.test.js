@@ -6,6 +6,12 @@ const loadApiUrl = (dev) => {
     return require('../api.config').API_URL;
 };
 
+const loadPrivacyUrl = (dev) => {
+    jest.resetModules();
+    global.__DEV__ = dev;
+    return require('../api.config').PRIVACY_POLICY_URL;
+};
+
 describe('API_URL', () => {
     const original = global.__DEV__;
 
@@ -36,5 +42,31 @@ describe('API_URL', () => {
 
     it('carries no trailing slash, so joined paths cannot double up', () => {
         expect(loadApiUrl(false).endsWith('/')).toBe(false);
+    });
+});
+
+describe('PRIVACY_POLICY_URL', () => {
+    const original = global.__DEV__;
+
+    afterEach(() => {
+        global.__DEV__ = original;
+    });
+
+    it('points at the published policy over HTTPS', () => {
+        // This is the address a store reviewer is given, so it has to be the
+        // real one rather than something assembled from the current build.
+        expect(loadPrivacyUrl(false)).toBe('https://wealthtrack.duckdns.org/privacy');
+    });
+
+    it('stays the public address even in a development build', () => {
+        // The LAN host serves the same file, but that address resolves on
+        // exactly one Wi-Fi network — anywhere else it is a dead link.
+        expect(loadPrivacyUrl(true)).toBe('https://wealthtrack.duckdns.org/privacy');
+    });
+
+    it('is never http, and never doubles its separator', () => {
+        const url = loadPrivacyUrl(false);
+        expect(url.startsWith('https://')).toBe(true);
+        expect(url).not.toContain('//privacy');
     });
 });

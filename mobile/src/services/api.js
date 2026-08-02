@@ -78,6 +78,12 @@ export const authService = {
             timeout: 60000,
         }),
     removeAvatar: () => api.delete('/auth/avatar'),
+    // No id travels with this: the server deletes whichever account the token
+    // names. The password is sent only for accounts that have one — a Google
+    // account has none to prove, and the server knows which is which without
+    // being told.
+    deleteAccount: (password) =>
+        api.delete('/auth/account', { data: password ? { password } : {} }),
 };
 
 export const expenseService = {

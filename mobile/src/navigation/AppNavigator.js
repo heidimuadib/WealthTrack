@@ -14,6 +14,7 @@ import CategoriesScreen from '../screens/CategoriesScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import LoginScreen from '../screens/LoginScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
@@ -162,6 +163,10 @@ const AppNavigator = () => {
                         <Stack.Screen name="Categories" component={CategoriesScreen} />
                         <Stack.Screen name="Reports" component={ReportsScreen} />
                         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+                        {/* Only ever reachable while signed in — the whole
+                            branch is unmounted once the session goes, which is
+                            what removes it the instant the account is gone. */}
+                        <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Login" component={LoginScreen} />

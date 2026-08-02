@@ -72,6 +72,21 @@ app.use(
     })
 );
 
+// The privacy policy has to be readable by someone with no account, no app and
+// no patience — a store reviewer with a browser. Served from disk ahead of the
+// logger and the rate limiter for the same reasons avatars are: it is static
+// bytes, not an API call, and reading it should not spend anyone's budget.
+// Nginx already terminates TLS in front of this, so the public URL is
+// https://<host>/privacy with no extra server configuration to maintain.
+app.use(
+    '/privacy',
+    express.static(path.join(__dirname, '..', 'public', 'privacy'), {
+        maxAge: '1d',
+        index: 'index.html',
+        dotfiles: 'ignore',
+    })
+);
+
 app.use(express.json({ limit: '100kb' }));
 
 // Anything here would otherwise be written to the terminal, and scrolled past
@@ -133,6 +148,11 @@ const apiLimiter = rateLimit({
 app.use('/auth/login', authLimiter);
 app.use('/auth/register', authLimiter);
 app.use('/auth/google', authLimiter);
+// Deletion is irreversible and, for a password account, guessable: it checks a
+// password the same way login does, so it gets login's budget rather than the
+// general one. skipSuccessfulRequests means the one call that works never
+// counts against anybody.
+app.use('/auth/account', authLimiter);
 app.use(apiLimiter);
 
 // Routes

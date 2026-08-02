@@ -6,13 +6,20 @@ const { avatarPublicUrl, deleteAvatarFile } = require('../middleware/upload');
 
 // Everything the app is allowed to know about an account, in one place so a
 // new profile field cannot reach one route's response and miss another's.
-const PUBLIC_USER = { id: true, email: true, name: true, avatarUrl: true };
+//
+// The hash is selected but never returned: toPublicUser reduces it to a single
+// boolean, which is what tells the delete screen to ask for a password rather
+// than a typed phrase — an account created through Google has no password and
+// could never satisfy one. Every route that selects this MUST answer through
+// toPublicUser; a test asserts the hash cannot survive that trip.
+const PUBLIC_USER = { id: true, email: true, name: true, avatarUrl: true, password: true };
 
 const toPublicUser = (user) => ({
     id: user.id,
     email: user.email,
     name: user.name,
     avatarUrl: user.avatarUrl,
+    hasPassword: typeof user.password === 'string' && user.password.length > 0,
 });
 
 // Absent when Google sign-in has not been configured. The route below answers
@@ -211,7 +218,7 @@ const me = async (req, res) => {
             return res.status(401).json({ error: 'Account no longer exists' });
         }
 
-        res.json({ user });
+        res.json({ user: toPublicUser(user) });
     } catch (error) {
         res.status(500).json({ error: 'Something went wrong' });
     }
@@ -239,7 +246,7 @@ const updateProfile = async (req, res) => {
             select: PUBLIC_USER,
         });
 
-        res.json({ user });
+        res.json({ user: toPublicUser(user) });
     } catch (error) {
         // Token still parses, but the account behind it is gone.
         if (error.code === 'P2025') {
@@ -275,7 +282,7 @@ const setAvatar = async (req, res) => {
         // an account pointing at a photo that is no longer on disk.
         deleteAvatarFile(previous?.avatarUrl);
 
-        res.json({ user });
+        res.json({ user: toPublicUser(user) });
     } catch (error) {
         // The row still points at the old photo, so this upload is an orphan.
         deleteAvatarFile(avatarUrl);
@@ -303,7 +310,7 @@ const removeAvatar = async (req, res) => {
 
         deleteAvatarFile(previous?.avatarUrl);
 
-        res.json({ user });
+        res.json({ user: toPublicUser(user) });
     } catch (error) {
         if (error.code === 'P2025') {
             return res.status(401).json({ error: 'Account no longer exists' });
@@ -313,4 +320,95 @@ const removeAvatar = async (req, res) => {
     }
 };
 
-module.exports = { register, login, google, me, updateProfile, setAvatar, removeAvatar };
+// Irreversible, and scoped entirely by the token. The account comes from
+// req.user.id; nothing in the body, query or params can widen it or point it
+// at somebody else, which is the only reason this endpoint is safe to expose
+// at all.
+const deleteAccount = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const account = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { password: true, avatarUrl: true },
+        });
+
+        // A valid token whose account is already gone means this has run
+        // before. Answering success rather than an error makes the call
+        // idempotent: the state the caller asked for is the state that holds.
+        if (!account) {
+            return res.json({ deleted: true });
+        }
+
+        // Re-authentication wherever it is possible. An account created
+        // through Google has no password to check — demanding one would lock
+        // those users out of deleting their own data — so the app guards that
+        // case with a typed confirmation instead. See the report for what that
+        // does and does not protect against.
+        if (account.password) {
+            const { password } = req.body || {};
+
+            if (typeof password !== 'string' || password.length === 0) {
+                return res
+                    .status(400)
+                    .json({ error: 'Password is required to delete this account' });
+            }
+
+            const matches = await bcrypt.compare(password, account.password);
+
+            if (!matches) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+        }
+
+        // Read before the row goes, or the path goes with it.
+        const { avatarUrl } = account;
+
+        // Nothing in this schema cascades, and that is deliberate:
+        // deleteCategory refuses with a 409 to remove a category that still
+        // has expenses, and an onDelete: Cascade from Expense to Category
+        // would quietly undo that guard for every caller, not just this one.
+        // So the rows go explicitly, in foreign-key order — expenses
+        // reference categories, so they lead — inside a single transaction
+        // that removes the whole account or none of it. Every clause is
+        // scoped by userId, so no other account can be reached from here.
+        await prisma.$transaction([
+            prisma.expense.deleteMany({ where: { userId } }),
+            prisma.budget.deleteMany({ where: { userId } }),
+            prisma.category.deleteMany({ where: { userId } }),
+            prisma.user.delete({ where: { id: userId } }),
+        ]);
+
+        // After the commit, never before. A failed unlink leaves an orphaned
+        // file, which is clutter someone can sweep later; unlinking first and
+        // then rolling back would leave a live account whose photo had
+        // silently vanished, which the user cannot recover from at all.
+        deleteAvatarFile(avatarUrl);
+
+        res.json({ deleted: true });
+    } catch (error) {
+        // The row can disappear between the read and the transaction if two
+        // calls arrive together. That is the outcome that was asked for.
+        if (error.code === 'P2025') {
+            return res.json({ deleted: true });
+        }
+
+        // Code only. This request carries a password, and the account it names
+        // is the one thing worth not writing down.
+        console.error('Account deletion failed', error.code || 'unknown');
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+};
+
+module.exports = {
+    register,
+    login,
+    google,
+    me,
+    updateProfile,
+    setAvatar,
+    removeAvatar,
+    deleteAccount,
+    // Exported for the test that pins the password hash inside this module.
+    toPublicUser,
+};

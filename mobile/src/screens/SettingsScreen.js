@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import {
     Tag,
     LogOut,
@@ -9,6 +9,8 @@ import {
     Smartphone,
     Sun,
     Moon,
+    ShieldCheck,
+    Trash2,
 } from 'lucide-react-native';
 
 import Card from '../components/Card';
@@ -17,6 +19,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { useFeedback } from '../components/FeedbackProvider';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage, LANGUAGES } from '../i18n';
+import { PRIVACY_POLICY_URL } from '../config/api.config';
 import useAuthStore from '../store/authStore';
 
 // "System" first, because following the device is the default and the option
@@ -36,7 +39,18 @@ const SettingsScreen = ({ navigation }) => {
     const user = useAuthStore((state) => state.user);
     const { t, language, setLanguage } = useLanguage();
 
-    const { confirm } = useFeedback();
+    const { confirm, notify } = useFeedback();
+
+    // The published document rather than a copy bundled in the app: there is
+    // one policy, and a reader here and a store reviewer with a browser should
+    // never be able to see two different versions of it.
+    const openPrivacyPolicy = async () => {
+        try {
+            await Linking.openURL(PRIVACY_POLICY_URL);
+        } catch (error) {
+            notify({ message: t('settings.privacyFailed') });
+        }
+    };
 
     const handleLogout = async () => {
         const confirmed = await confirm({
@@ -104,6 +118,23 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={styles.rowMain}>
                             <Text style={styles.rowTitle}>{t('settings.categories')}</Text>
                             <Text style={styles.rowMeta}>{t('settings.categoriesMeta')}</Text>
+                        </View>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.row, styles.rowDivider]}
+                        onPress={openPrivacyPolicy}
+                        activeOpacity={0.7}
+                        accessibilityRole="link"
+                        accessibilityLabel={t('settings.privacy')}
+                    >
+                        <View style={styles.rowIcon}>
+                            <ShieldCheck color={colors.brand} size={18} />
+                        </View>
+                        <View style={styles.rowMain}>
+                            <Text style={styles.rowTitle}>{t('settings.privacy')}</Text>
+                            <Text style={styles.rowMeta}>{t('settings.privacyMeta')}</Text>
                         </View>
                         <ChevronRight color={colors.textMuted} size={18} />
                     </TouchableOpacity>
@@ -198,6 +229,22 @@ const SettingsScreen = ({ navigation }) => {
                 >
                     <LogOut color={colors.onDanger} size={18} />
                     <Text style={styles.logoutText}>{t('settings.logout')}</Text>
+                </TouchableOpacity>
+
+                {/* Deliberately quiet, and deliberately below logging out. It
+                    is the more destructive of the two, so it should be the
+                    harder one to hit by accident — and the screen it opens is
+                    where the warning and the confirmation live. */}
+                <TouchableOpacity
+                    style={styles.deleteAccount}
+                    onPress={() => navigation.navigate('DeleteAccount')}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('settings.deleteAccount')}
+                    accessibilityHint={t('settings.deleteAccountMeta')}
+                >
+                    <Trash2 color={colors.danger} size={16} />
+                    <Text style={styles.deleteAccountText}>{t('settings.deleteAccount')}</Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>
@@ -325,6 +372,19 @@ const createStyles = ({ colors, typography }) =>
         fontSize: 15,
         fontWeight: '600',
         color: colors.onDanger,
+    },
+    deleteAccount: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: spacing.m,
+        paddingVertical: spacing.l,
+    },
+    deleteAccountText: {
+        marginLeft: spacing.s,
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.danger,
     },
     });
 

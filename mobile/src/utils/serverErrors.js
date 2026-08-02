@@ -39,6 +39,7 @@ export const SERVER_MESSAGE_KEYS = {
     'No image received': 'server.noImage',
     'Only JPEG, PNG, and WebP images can be used as a photo.': 'server.imageType',
     'Password must be at least 8 characters': 'server.passwordTooShort',
+    'Password is required to delete this account': 'server.passwordRequiredForDelete',
     'That image is larger than 5 MB. Pick a smaller one.': 'server.imageTooLarge',
     'User already exists': 'server.userExists',
     'Year must be a number between 2000 and 2100': 'server.invalidYearRange',

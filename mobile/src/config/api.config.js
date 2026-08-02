@@ -15,3 +15,9 @@ const PRODUCTION_API_URL = 'https://wealthtrack.duckdns.org';
 const getApiUrl = () => (__DEV__ ? `http://${LAN_IP}:3000` : PRODUCTION_API_URL);
 
 export const API_URL = getApiUrl();
+
+// Always the public host, even in development. This is the document a store
+// reviewer opens and the one a user is told about; the LAN address is
+// reachable from exactly one Wi-Fi network and would be a broken link
+// everywhere else.
+export const PRIVACY_POLICY_URL = `${PRODUCTION_API_URL}/privacy`;

@@ -7,6 +7,7 @@ const {
     updateProfile,
     setAvatar,
     removeAvatar,
+    deleteAccount,
 } = require('../controllers/auth.controller');
 const auth = require('../middleware/auth');
 const { uploadAvatar } = require('../middleware/upload');
@@ -26,5 +27,9 @@ router.put('/profile', auth, updateProfile);
 // so an unauthenticated request is turned away before anything reaches disk.
 router.post('/avatar', auth, uploadAvatar, setAvatar);
 router.delete('/avatar', auth, removeAvatar);
+
+// No :id, by design. The account deleted is whichever one the token names, so
+// there is no parameter an attacker could substitute.
+router.delete('/account', auth, deleteAccount);
 
 module.exports = router;
