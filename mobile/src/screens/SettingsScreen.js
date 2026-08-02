@@ -21,6 +21,7 @@ import { useFeedback } from '../components/FeedbackProvider';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage, LANGUAGES } from '../i18n';
 import { PRIVACY_POLICY_URL } from '../config/api.config';
+import { APP_VERSION } from '../config/crashReporting.config';
 import useAuthStore from '../store/authStore';
 import haptics from '../services/haptics';
 
@@ -260,7 +261,12 @@ const SettingsScreen = ({ navigation }) => {
                 <Card>
                     <View style={styles.aboutRow}>
                         <Info color={colors.textMuted} size={16} />
-                        <Text style={styles.aboutText}>{t('settings.aboutText')}</Text>
+                        {/* Interpolated from the one constant that Gradle is
+                            tested against, rather than typed into three
+                            dictionaries where it drifted out of date. */}
+                        <Text style={styles.aboutText}>
+                            {t('settings.aboutText', { version: APP_VERSION })}
+                        </Text>
                     </View>
                 </Card>
 

@@ -11,9 +11,13 @@
 // its recovery screen.
 export const SENTRY_DSN = '';
 
-// Reported with every event so a crash can be tied to the build it came from.
+// Reported with every event so a crash can be tied to the build it came from,
+// and shown to the user on the About row — one constant rather than a number
+// repeated in a dictionary, which is how the app came to be telling people it
+// was version 0.1.0 while Gradle built 1.0.
+//
 // These have to match android/app/build.gradle — a test reads the gradle file
 // and fails if they drift, because a report attributed to the wrong build is
 // worse than one with no version at all.
-export const APP_VERSION = '1.0';
+export const APP_VERSION = '1.0.0';
 export const APP_BUILD = '1';
