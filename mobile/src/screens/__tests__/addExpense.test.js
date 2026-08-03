@@ -195,12 +195,29 @@ describe('the note and keypad cannot both be gone', () => {
         expect(noteInput(tree).props.value).toBe('lunch with the team');
     });
 
-    it('still handles an ordinary blur', async () => {
+    it('does not restore the keypad on blur alone', async () => {
+        // Blur lands at the start of the keyboard's exit animation, when the
+        // window is still short by a keyboard's height. A keypad drawn then is
+        // drawn compressed and has to jump when adjustResize catches up.
         const tree = await render();
         await revealAndFocusNote(tree);
 
         await act(async () => noteInput(tree).props.onBlur());
+        expect(hasKeypad(tree)).toBe(false);
 
+        await act(async () => keyboardHandlers.keyboardDidHide());
+        expect(hasKeypad(tree)).toBe(true);
+    });
+
+    it('restores once, and stays restored if the event repeats', async () => {
+        const tree = await render();
+        await revealAndFocusNote(tree);
+
+        await act(async () => keyboardHandlers.keyboardDidHide());
+        expect(hasKeypad(tree)).toBe(true);
+
+        // A second event must not toggle anything back.
+        await act(async () => keyboardHandlers.keyboardDidHide());
         expect(hasKeypad(tree)).toBe(true);
     });
 
@@ -219,16 +236,45 @@ describe('the note and keypad cannot both be gone', () => {
 });
 
 describe('tapping the amount', () => {
-    it('brings the keypad back while the note has focus', async () => {
+    it('releases the note without restoring the keypad yet', async () => {
         const tree = await render();
         await revealAndFocusNote(tree);
         expect(hasKeypad(tree)).toBe(false);
 
         await press(amountRow(tree));
 
-        expect(hasKeypad(tree)).toBe(true);
+        // Both halves of the dismissal happen now...
         expect(noteBlur).toHaveBeenCalled();
         expect(Keyboard.dismiss).toHaveBeenCalled();
+        // ...but the keypad waits for the window to be its own height again,
+        // or it is painted compressed and jumps when adjustResize lands.
+        expect(hasKeypad(tree)).toBe(false);
+    });
+
+    it('brings the keypad back once the keyboard has finished leaving', async () => {
+        const tree = await render();
+        await revealAndFocusNote(tree);
+
+        await press(amountRow(tree));
+        await act(async () => keyboardHandlers.keyboardDidHide());
+
+        expect(hasKeypad(tree)).toBe(true);
+    });
+
+    it('moves the keypad through exactly one transition', async () => {
+        const tree = await render();
+        await revealAndFocusNote(tree);
+        const states = [hasKeypad(tree)];
+
+        await press(amountRow(tree));
+        states.push(hasKeypad(tree));
+
+        await act(async () => keyboardHandlers.keyboardDidHide());
+        states.push(hasKeypad(tree));
+
+        // Hidden, still hidden, then shown — never shown-hidden-shown, which
+        // is what an immediate restore alongside the listener would produce.
+        expect(states).toEqual([false, false, true]);
     });
 
     it('changes neither the amount nor the note', async () => {
@@ -242,6 +288,22 @@ describe('tapping the amount', () => {
         expect(amountShown(tree)).toBe('1,234');
         expect(noteInput(tree)).toBeTruthy();
         expect(noteInput(tree).props.value).toBe('jeepney');
+    });
+
+    it('leaves the whole form intact across the full dismissal', async () => {
+        const tree = await render();
+        await typeAmount(tree, '1234');
+        await revealAndFocusNote(tree);
+        await act(async () => noteInput(tree).props.onChangeText('jeepney'));
+
+        await press(amountRow(tree));
+        await act(async () => keyboardHandlers.keyboardDidHide());
+
+        expect(amountShown(tree)).toBe('1,234');
+        expect(noteInput(tree).props.value).toBe('jeepney');
+        expect(byLabel(tree, FOOD.name).props.accessibilityState).toEqual({ selected: true });
+        expect(byLabel(tree, EN['dates.today'])).toBeTruthy();
+        expect(hasKeypad(tree)).toBe(true);
     });
 
     it('navigates nowhere and buzzes about nothing', async () => {

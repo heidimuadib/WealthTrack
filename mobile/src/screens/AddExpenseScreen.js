@@ -72,17 +72,21 @@ const AddExpenseScreen = ({ navigation, route }) => {
     // leaving the field focused, and only the field itself can undo that.
     const noteRef = useRef(null);
 
-    // The keypad is hidden while the note has focus, and onBlur is the only
-    // thing that brings it back — so anything that dismisses the keyboard
-    // WITHOUT blurring the field strands the screen with no keyboard and no
-    // keypad, and therefore no way to enter an amount at all. On Android the
-    // back button and the back gesture both do exactly that: the IME closes,
-    // the TextInput keeps focus, and onBlur never fires.
+    // The single place the keypad comes back, whichever way the note was left:
+    // a tap on the amount, a tap on dead space, the keyboard's own done key,
+    // or Android's back button and back gesture — which close the IME while
+    // leaving the field focused, so onBlur never fires for them at all. That
+    // last pair is what used to strand the screen with no keyboard and no
+    // keypad and no way to enter an amount.
     //
-    // Treating a hidden keyboard as the end of the note closes that door
-    // however it was opened. The blur() matters as much as the flag: without
-    // it React Native still believes the field is focused, so the next tap on
-    // it is a no-op and the keyboard never comes back either.
+    // Waiting for this event rather than for the blur is also what keeps the
+    // restore still: it fires once Android has finished sliding the keyboard
+    // away and adjustResize has given the window its height back, so the pad
+    // is drawn once, at its final size, in its final place.
+    //
+    // The blur() matters as much as the flag. Without it React Native still
+    // believes the field is focused, so the next tap on it is a no-op and the
+    // keyboard never comes back either.
     useEffect(() => {
         const subscription = Keyboard.addListener('keyboardDidHide', () => {
             noteRef.current?.blur();
@@ -121,10 +125,17 @@ const AddExpenseScreen = ({ navigation, route }) => {
     // and until now it did nothing at all — the row was a plain View. It only
     // ever puts the amount back within reach: the note keeps its text and its
     // place on screen, and the figure itself is not touched.
+    //
+    // Deliberately no setNoteFocused(false) here. The keypad is 264px of the
+    // footer, and the window is still short by roughly a keyboard's height for
+    // the quarter second Android spends sliding it away — so restoring the pad
+    // now paints it compressed and too high, and it visibly drops into place
+    // when the resize lands. keyboardDidHide fires at the end of that
+    // animation, which is the only moment the final height is known, so it
+    // owns the restore and this only has to release the focus that starts it.
     const handleEditAmount = useCallback(() => {
         noteRef.current?.blur();
         Keyboard.dismiss();
-        setNoteFocused(false);
     }, []);
 
     const { confirm, notify } = useFeedback();
@@ -370,8 +381,14 @@ const AddExpenseScreen = ({ navigation, route }) => {
                             value={notes}
                             onChangeText={setNotes}
                             placeholder={t('add.notePlaceholder')}
+                            // Focus hides the keypad at once, because the space
+                            // it occupies is about to be taken by the keyboard
+                            // either way. Losing focus does not restore it:
+                            // blur lands a whole keyboard animation before the
+                            // window is its own height again, and a keypad
+                            // drawn in that gap has to jump afterwards. Only
+                            // keyboardDidHide brings it back.
                             onFocus={() => setNoteFocused(true)}
-                            onBlur={() => setNoteFocused(false)}
                         />
                     </View>
                 ) : null}
