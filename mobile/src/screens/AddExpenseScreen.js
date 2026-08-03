@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
+    Keyboard,
 } from 'react-native';
 import { CalendarDays, StickyNote, Trash2, Tag } from 'lucide-react-native';
 
@@ -32,6 +33,14 @@ import haptics from '../services/haptics';
 // category is not re-run by a fresh [] on every render.
 const NO_CATEGORIES = [];
 
+// The two halves of the figure, once the row itself carries the whole amount
+// as its label. Left focusable they would be read as "peso sign" and then a
+// bare number, which is the fragmentation the row's label exists to avoid.
+const AMOUNT_PARTS_HIDDEN = {
+    importantForAccessibility: 'no-hide-descendants',
+    accessibilityElementsHidden: true,
+};
+
 // Serves both the "Add" tab and the "EditExpense" stack route — the only
 // difference is whether an existing expense arrived in the route params.
 //
@@ -58,6 +67,65 @@ const AddExpenseScreen = ({ navigation, route }) => {
     // undefined until the stored preference has been read, so the first
     // category is not claimed before the remembered one has had its chance.
     const [preferred, setPreferred] = useState(undefined);
+
+    // Needed to blur the note explicitly. Android can hide the keyboard while
+    // leaving the field focused, and only the field itself can undo that.
+    const noteRef = useRef(null);
+
+    // The keypad is hidden while the note has focus, and onBlur is the only
+    // thing that brings it back — so anything that dismisses the keyboard
+    // WITHOUT blurring the field strands the screen with no keyboard and no
+    // keypad, and therefore no way to enter an amount at all. On Android the
+    // back button and the back gesture both do exactly that: the IME closes,
+    // the TextInput keeps focus, and onBlur never fires.
+    //
+    // Treating a hidden keyboard as the end of the note closes that door
+    // however it was opened. The blur() matters as much as the flag: without
+    // it React Native still believes the field is focused, so the next tap on
+    // it is a no-op and the keyboard never comes back either.
+    useEffect(() => {
+        const subscription = Keyboard.addListener('keyboardDidHide', () => {
+            noteRef.current?.blur();
+            setNoteFocused(false);
+        });
+
+        return () => subscription.remove();
+    }, []);
+
+    // Set only by the chip, so focus follows the tap that asked for the note
+    // and never a note that was already on screen — an edited expense arrives
+    // with its note showing, and autoFocus would open the keyboard over the
+    // keypad the moment that screen appeared.
+    const focusNoteOnReveal = useRef(false);
+
+    const revealNote = useCallback(() => {
+        focusNoteOnReveal.current = true;
+        setShowNote(true);
+    }, []);
+
+    // The field does not exist until the render showNote triggers, so the
+    // focus has to wait for it. This effect runs in the commit that mounts the
+    // input, which is early enough to need no timer — and the ref is cleared
+    // as it fires, so a later render that leaves showNote true cannot pull
+    // focus back off the keypad.
+    useEffect(() => {
+        if (!showNote || !focusNoteOnReveal.current) {
+            return;
+        }
+
+        focusNoteOnReveal.current = false;
+        noteRef.current?.focus();
+    }, [showNote]);
+
+    // Tapping the figure is what everyone tries first once the keypad has gone,
+    // and until now it did nothing at all — the row was a plain View. It only
+    // ever puts the amount back within reach: the note keeps its text and its
+    // place on screen, and the figure itself is not touched.
+    const handleEditAmount = useCallback(() => {
+        noteRef.current?.blur();
+        Keyboard.dismiss();
+        setNoteFocused(false);
+    }, []);
 
     const { confirm, notify } = useFeedback();
 
@@ -121,6 +189,13 @@ const AddExpenseScreen = ({ navigation, route }) => {
 
     const handleKey = (key) => {
         setError('');
+        // The one keypad press with nothing to show for itself: a hold that
+        // wipes the figure needs some sign it registered. Digits get none —
+        // the number moving is confirmation enough, and a buzz per key is
+        // exactly how haptics stop meaning anything.
+        if (key === 'clear' && value !== '') {
+            haptics.light();
+        }
         setValue((current) => pressKey(current, key));
     };
 
@@ -200,6 +275,25 @@ const AddExpenseScreen = ({ navigation, route }) => {
         }
     };
 
+    // Says which of the two requirements is still missing, and nothing at all
+    // once the form is valid. Muted rather than red: nothing has gone wrong,
+    // the user simply has not finished.
+    const saveHint = useMemo(() => {
+        if (loading || canSave) {
+            return '';
+        }
+        if (amount === null) {
+            return t('add.hintAmount');
+        }
+        // Reachable whenever the row has no chip to pick: while the categories
+        // are still loading, after that request fails, and on an account whose
+        // categories have all been deleted.
+        if (!selectedCategory) {
+            return t('add.hintCategory');
+        }
+        return '';
+    }, [loading, canSave, amount, selectedCategory, t]);
+
     const display = formatDisplay(value);
     // Already localised, and already collapses today and yesterday to words —
     // the same labels the expense list uses for its day headings.
@@ -219,16 +313,29 @@ const AddExpenseScreen = ({ navigation, route }) => {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                <View
+                <TouchableOpacity
                     style={styles.amountRow}
+                    onPress={handleEditAmount}
+                    activeOpacity={0.7}
+                    // One element rather than three. Without `accessible` the
+                    // peso sign and the figure stay separately focusable, and
+                    // the row is read as two fragments instead of an amount.
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t('add.amountLabel')} ₱${display}`}
+                    accessibilityHint={t('add.editAmount')}
                     accessibilityLiveRegion="polite"
-                    accessibilityLabel={`${t('add.amountLabel')} ${display}`}
                 >
-                    <Text style={styles.currency}>₱</Text>
-                    <Text style={[styles.amount, value === '' && styles.amountEmpty]}>
+                    <Text style={styles.currency} {...AMOUNT_PARTS_HIDDEN}>
+                        ₱
+                    </Text>
+                    <Text
+                        style={[styles.amount, value === '' && styles.amountEmpty]}
+                        {...AMOUNT_PARTS_HIDDEN}
+                    >
                         {display}
                     </Text>
-                </View>
+                </TouchableOpacity>
 
                 <View style={styles.metaRow}>
                     <TouchableOpacity
@@ -245,7 +352,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
                     {!showNote ? (
                         <TouchableOpacity
                             style={styles.metaChip}
-                            onPress={() => setShowNote(true)}
+                            onPress={revealNote}
                             activeOpacity={0.75}
                             accessibilityRole="button"
                             accessibilityLabel={t('add.addNote')}
@@ -259,6 +366,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
                 {showNote ? (
                     <View style={styles.noteWrap}>
                         <Input
+                            inputRef={noteRef}
                             value={notes}
                             onChangeText={setNotes}
                             placeholder={t('add.notePlaceholder')}
@@ -317,6 +425,12 @@ const AddExpenseScreen = ({ navigation, route }) => {
             </ScrollView>
 
             <View style={styles.footer}>
+                {/* Always occupies its line, empty or not, so the keypad never
+                    jumps up under a thumb the moment the first digit lands. */}
+                <Text style={styles.saveHint} numberOfLines={1}>
+                    {saveHint}
+                </Text>
+
                 <Button
                     title={editing ? t('add.saveEdit') : t('add.save')}
                     onPress={handleSubmit}
@@ -333,6 +447,7 @@ const AddExpenseScreen = ({ navigation, route }) => {
                         onKey={handleKey}
                         disabled={loading}
                         deleteLabel={t('add.keyDelete')}
+                        deleteHint={t('add.keyDeleteHint')}
                         decimalLabel={t('add.keyDecimal')}
                     />
                 ) : null}
@@ -367,6 +482,10 @@ const createStyles = ({ colors, typography }) =>
             paddingHorizontal: spacing.l,
             paddingTop: spacing.s,
             paddingBottom: spacing.l,
+            // The padding above already clears this several times over. Stated
+            // anyway so the row cannot be trimmed below a usable target now
+            // that it is something you tap rather than only read.
+            minHeight: 44,
         },
         currency: {
             fontSize: 26,
@@ -451,6 +570,17 @@ const createStyles = ({ colors, typography }) =>
             borderTopWidth: 1,
             borderTopColor: colors.border,
             backgroundColor: colors.canvas,
+        },
+        // Muted help text, not an error: at this point nothing has failed, the
+        // form is simply not finished. minHeight keeps the line reserved while
+        // it is empty, which is what stops the keypad shifting when it clears.
+        saveHint: {
+            minHeight: 18,
+            marginHorizontal: spacing.l,
+            marginBottom: spacing.xs,
+            textAlign: 'center',
+            fontSize: 12,
+            color: colors.textMuted,
         },
         save: {
             marginHorizontal: spacing.l,

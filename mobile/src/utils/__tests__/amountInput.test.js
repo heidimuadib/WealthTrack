@@ -56,6 +56,33 @@ describe('pressKey — decimals', () => {
     });
 });
 
+describe('pressKey — clear', () => {
+    it('empties a whole amount in one press', () => {
+        expect(pressKey('123456789', 'clear')).toBe('');
+    });
+
+    it('takes the decimal part with it', () => {
+        expect(pressKey('1234.56', 'clear')).toBe('');
+    });
+
+    it('lands on the same state a freshly opened screen is in', () => {
+        expect(pressKey('999', 'clear')).toBe(pressKey('', 'del'));
+        expect(formatDisplay(pressKey('999', 'clear'))).toBe('0');
+        expect(toAmount(pressKey('999', 'clear'))).toBeNull();
+    });
+
+    it('is harmless on an already empty value', () => {
+        expect(pressKey('', 'clear')).toBe('');
+    });
+
+    it('leaves the keypad usable straight afterwards', () => {
+        const cleared = pressKey('1234.56', 'clear');
+        expect(type('75', cleared)).toBe('75');
+        // The dot rule resets with the value rather than outliving it.
+        expect(type('7.5', cleared)).toBe('7.5');
+    });
+});
+
 describe('pressKey — delete', () => {
     it('removes the last character', () => {
         expect(pressKey('120', 'del')).toBe('12');

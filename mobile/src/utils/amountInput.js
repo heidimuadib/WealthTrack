@@ -17,11 +17,21 @@ const integerPart = (value) =>
 const decimalPart = (value) =>
     value.includes('.') ? value.slice(value.indexOf('.') + 1) : '';
 
-// key is '0'-'9', '.', or 'del'. Anything else leaves the value untouched
-// rather than throwing: a keypad should never be able to crash the screen.
+// key is '0'-'9', '.', 'del', or 'clear'. Anything else leaves the value
+// untouched rather than throwing: a keypad should never be able to crash the
+// screen.
 export const pressKey = (value, key) => {
     if (key === 'del') {
         return value.slice(0, -1);
+    }
+
+    // The whole amount at once, from a deliberate hold on the same key that
+    // removes one digit. Returning the empty string rather than '0' lands on
+    // exactly the state a freshly opened screen is in — the display falls back
+    // to a muted zero and toAmount() reads it as nothing to save, so there is
+    // no second "cleared" state for the rest of the screen to know about.
+    if (key === 'clear') {
+        return '';
     }
 
     if (key === '.') {

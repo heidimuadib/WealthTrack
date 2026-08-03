@@ -148,8 +148,12 @@ const en = {
     'add.needCategory': 'Pick a category first.',
     'add.manage': 'Manage categories',
     'add.amountLabel': 'Amount',
+    'add.editAmount': 'Edit amount',
     'add.keyDelete': 'Delete last digit',
+    'add.keyDeleteHint': 'Long press to clear the amount',
     'add.keyDecimal': 'Decimal point',
+    'add.hintAmount': 'Enter an amount to continue.',
+    'add.hintCategory': 'Choose a category to continue.',
 
     // Categories
     'categories.title': 'Categories',
@@ -580,8 +584,12 @@ const fil = {
     'add.needCategory': 'Pumili muna ng kategorya.',
     'add.manage': 'Pamahalaan ang mga kategorya',
     'add.amountLabel': 'Halaga',
+    'add.editAmount': 'Baguhin ang halaga',
     'add.keyDelete': 'Burahin ang huling numero',
+    'add.keyDeleteHint': 'Pindutin nang matagal para burahin ang halaga',
     'add.keyDecimal': 'Tuldok desimal',
+    'add.hintAmount': 'Maglagay ng halaga para magpatuloy.',
+    'add.hintCategory': 'Pumili ng kategorya para magpatuloy.',
 
     'categories.title': 'Mga Kategorya',
     'categories.subtitle': 'Ayusin ang iyong gastos',
@@ -983,8 +991,12 @@ const ceb = {
     'add.needCategory': 'Pagpili una og kategorya.',
     'add.manage': 'Pagdumala sa mga kategorya',
     'add.amountLabel': 'Kantidad',
+    'add.editAmount': 'Usba ang kantidad',
     'add.keyDelete': 'Papasa ang kataposang numero',
+    'add.keyDeleteHint': 'Pislita og dugay aron papason ang kantidad',
     'add.keyDecimal': 'Tuldok desimal',
+    'add.hintAmount': 'Pagbutang og kantidad aron magpadayon.',
+    'add.hintCategory': 'Pagpili og kategorya aron magpadayon.',
 
     'categories.title': 'Mga Kategorya',
     'categories.subtitle': 'Ayoha ang imong gasto',
