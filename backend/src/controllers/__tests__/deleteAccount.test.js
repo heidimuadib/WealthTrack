@@ -14,6 +14,13 @@ jest.mock('../../lib/prisma', () => ({
     passwordResetToken: {
         deleteMany: jest.fn((args) => ({ op: 'resetToken.deleteMany', args })),
     },
+    settlement: { deleteMany: jest.fn((args) => ({ op: 'settlement.deleteMany', args })) },
+    sharedExpenseShare: {
+        deleteMany: jest.fn((args) => ({ op: 'share.deleteMany', args })),
+    },
+    sharedExpense: { deleteMany: jest.fn((args) => ({ op: 'sharedExpense.deleteMany', args })) },
+    groupMember: { deleteMany: jest.fn((args) => ({ op: 'groupMember.deleteMany', args })) },
+    expenseGroup: { deleteMany: jest.fn((args) => ({ op: 'expenseGroup.deleteMany', args })) },
     $transaction: jest.fn(async (ops) => ops),
 }));
 
@@ -65,7 +72,7 @@ afterEach(() => {
 });
 
 describe('DELETE /auth/account — what gets deleted', () => {
-    it('removes expenses, budgets, categories and the user, in foreign-key order', async () => {
+    it('removes every table the account owns, in foreign-key order', async () => {
         prisma.user.findUnique.mockResolvedValue(account());
         const res = mockRes();
 
@@ -73,6 +80,11 @@ describe('DELETE /auth/account — what gets deleted', () => {
 
         const ops = prisma.$transaction.mock.calls[0][0].map((op) => op.op);
         expect(ops).toEqual([
+            'settlement.deleteMany',
+            'share.deleteMany',
+            'sharedExpense.deleteMany',
+            'groupMember.deleteMany',
+            'expenseGroup.deleteMany',
             'expense.deleteMany',
             'budget.deleteMany',
             'category.deleteMany',
@@ -82,6 +94,20 @@ describe('DELETE /auth/account — what gets deleted', () => {
         // Expenses before categories is not cosmetic: an expense row holds a
         // foreign key into category, so the other order is rejected outright.
         expect(ops.indexOf('expense.deleteMany')).toBeLessThan(ops.indexOf('category.deleteMany'));
+        // And shared expenses before both, because one points at each of them.
+        expect(ops.indexOf('sharedExpense.deleteMany')).toBeLessThan(
+            ops.indexOf('expense.deleteMany')
+        );
+        expect(ops.indexOf('sharedExpense.deleteMany')).toBeLessThan(
+            ops.indexOf('category.deleteMany')
+        );
+        // Shares and settlements before the members and bills they name.
+        expect(ops.indexOf('share.deleteMany')).toBeLessThan(
+            ops.indexOf('sharedExpense.deleteMany')
+        );
+        expect(ops.indexOf('groupMember.deleteMany')).toBeLessThan(
+            ops.indexOf('expenseGroup.deleteMany')
+        );
         expect(res.json).toHaveBeenCalledWith({ deleted: true });
     });
 
@@ -93,7 +119,26 @@ describe('DELETE /auth/account — what gets deleted', () => {
         expect(prisma.$transaction).toHaveBeenCalledTimes(1);
         // Half a deletion — expenses gone, account alive — is the one outcome
         // there is no way back from.
-        expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(5);
+        expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(10);
+    });
+
+    it('leaves nothing behind once the groups migration is applied', async () => {
+        // The clauses are no-ops until then, which is exactly why they are
+        // written now: the alternative is a deletion that silently starts
+        // leaving group data behind on the day the migration lands.
+        prisma.user.findUnique.mockResolvedValue(account());
+
+        await deleteAccount(req(), mockRes());
+
+        const ops = prisma.$transaction.mock.calls[0][0].map((op) => op.op);
+        ['settlement', 'share', 'sharedExpense', 'groupMember', 'expenseGroup'].forEach(
+            (table) => {
+                expect({ table, deleted: ops.includes(`${table}.deleteMany`) }).toEqual({
+                    table,
+                    deleted: true,
+                });
+            }
+        );
     });
 });
 
@@ -104,12 +149,28 @@ describe('DELETE /auth/account — ownership', () => {
         await deleteAccount(req(), mockRes());
 
         const ops = prisma.$transaction.mock.calls[0][0];
-        expect(ops[0].args).toEqual({ where: { userId: OWNER } });
-        expect(ops[1].args).toEqual({ where: { userId: OWNER } });
-        expect(ops[2].args).toEqual({ where: { userId: OWNER } });
+        const argsFor = (name) => ops.find((op) => op.op === name).args;
+
+        // The group tables carry no userId of their own — only ExpenseGroup
+        // does — so they are reached through the relation, which is the same
+        // filter every group route uses. A clause that lost it would delete
+        // across tenants, and this is where that would be caught.
+        expect(argsFor('settlement.deleteMany')).toEqual({ where: { group: { userId: OWNER } } });
+        expect(argsFor('share.deleteMany')).toEqual({
+            where: { sharedExpense: { group: { userId: OWNER } } },
+        });
+        expect(argsFor('sharedExpense.deleteMany')).toEqual({
+            where: { group: { userId: OWNER } },
+        });
+        expect(argsFor('groupMember.deleteMany')).toEqual({ where: { group: { userId: OWNER } } });
+        expect(argsFor('expenseGroup.deleteMany')).toEqual({ where: { userId: OWNER } });
+
+        expect(argsFor('expense.deleteMany')).toEqual({ where: { userId: OWNER } });
+        expect(argsFor('budget.deleteMany')).toEqual({ where: { userId: OWNER } });
+        expect(argsFor('category.deleteMany')).toEqual({ where: { userId: OWNER } });
         // Reset tokens, which would otherwise outlive the account they open.
-        expect(ops[3].args).toEqual({ where: { userId: OWNER } });
-        expect(ops[4].args).toEqual({ where: { id: OWNER } });
+        expect(argsFor('resetToken.deleteMany')).toEqual({ where: { userId: OWNER } });
+        expect(argsFor('user.delete')).toEqual({ where: { id: OWNER } });
     });
 
     it('ignores any id the caller supplies', async () => {
