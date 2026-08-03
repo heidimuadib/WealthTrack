@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { MONEY_MODELS } = require('./moneyModels');
 
 // One client for the whole process. Each controller used to construct its own,
 // which meant four connection pools competing for the same database.
@@ -16,21 +17,23 @@ const { PrismaClient } = require('@prisma/client');
 // boundary is numeric.
 const toNumber = (value) => (value === null || value === undefined ? value : value.toNumber());
 
-const prisma = new PrismaClient().$extends({
-    result: {
-        expense: {
+// Every model with an `amount` column, listed rather than spelled out one block
+// at a time. The conversion is identical for all of them, and writing it once
+// means a new money-carrying model cannot be added while quietly forgetting to
+// convert it — which is a bug that shows up far from its cause, as a total that
+// reads "0500" instead of 500. A test holds the list against the schema.
+const moneyResultExtension = Object.fromEntries(
+    MONEY_MODELS.map((model) => [
+        model,
+        {
             amount: {
                 needs: { amount: true },
-                compute: (expense) => toNumber(expense.amount),
+                compute: (row) => toNumber(row.amount),
             },
         },
-        budget: {
-            amount: {
-                needs: { amount: true },
-                compute: (budget) => toNumber(budget.amount),
-            },
-        },
-    },
-});
+    ])
+);
+
+const prisma = new PrismaClient().$extends({ result: moneyResultExtension });
 
 module.exports = prisma;

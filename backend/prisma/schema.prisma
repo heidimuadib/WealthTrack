@@ -8,6 +8,17 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// How a shared expense divides its total between the members who took part.
+// EQUAL divides evenly and hands the odd centavos out deterministically;
+// CUSTOM carries an amount per participant that must already add up to the
+// total. Nothing else is offered: percentage and share-based splits are the
+// same arithmetic wearing a different hat, and neither survives a round trip
+// through a Decimal(12,2) column without a second rounding rule to argue about.
+enum SplitMethod {
+  EQUAL
+  CUSTOM
+}
+
 model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
@@ -34,6 +45,7 @@ model User {
   budgets   Budget[]
   categories Category[]
   resetTokens PasswordResetToken[]
+  expenseGroups ExpenseGroup[]
 }
 
 model PasswordResetToken {
@@ -70,6 +82,12 @@ model Category {
   userId    Int
   user      User      @relation(fields: [userId], references: [id])
   expenses  Expense[]
+  // A category can also be the one a group bill was filed under. Phase 3 must
+  // therefore teach deleteCategory to count these as well: it currently counts
+  // Expense rows only, and SharedExpense.categoryId is required, so a category
+  // used by nothing but a group bill would pass that guard and then be refused
+  // by the foreign key as a 500 rather than the 409 it deserves.
+  sharedExpenses SharedExpense[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -93,6 +111,12 @@ model Expense {
   category    Category @relation(fields: [categoryId], references: [id])
   userId      Int
   user        User     @relation(fields: [userId], references: [id])
+  // Back-relation only — no column. When a group bill includes the user, the
+  // share they personally consumed is materialised as one of these rows and
+  // pointed at from SharedExpense.personalExpenseId. That direction is what
+  // keeps this table unaltered by the groups migration, and it is why reports
+  // need no change at all: a share is simply an ordinary expense.
+  sharedExpense SharedExpense?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -112,4 +136,181 @@ model Budget {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, month, year])
+}
+
+// ---------------------------------------------------------------------------
+// Groups and shared expenses
+//
+// "Bayri sa nako karon, tapli lang ko ninyo unya." One person pays the whole
+// bill and the rest settle up later. Everything below exists to answer two
+// questions honestly: how much of this did I actually consume, and who still
+// owes whom.
+//
+// Two decisions run through all five models.
+//
+// String ids, not autoincrement. Every other table here uses sequential
+// integers, which is fine when a row is only ever reached through a userId
+// filter. These rows are reached through three levels of relation, and a
+// guessable id is one forgotten filter away from being another tenant's data.
+// A uuid cannot be enumerated, so the failure mode of a missing filter is a
+// 404 rather than a leak. The existing integer keys are deliberately left
+// alone — the foreign keys pointing at them below stay Int.
+//
+// Nothing cascades except a share to its expense. That matches the rule the
+// rest of this schema already follows: deletion is written out explicitly,
+// where it can be read and tested, rather than delegated to a database
+// behaviour no controller mentions.
+//
+// Account deletion (Phase 3) must therefore remove these in foreign-key order,
+// ahead of the existing five, because SharedExpense points at both Expense and
+// Category:
+//
+//   Settlement -> SharedExpenseShare -> SharedExpense -> GroupMember
+//   -> ExpenseGroup -> Expense -> Budget -> Category -> PasswordResetToken
+//   -> User
+// ---------------------------------------------------------------------------
+
+model ExpenseGroup {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  // A swatch from the same palette the categories use, so a group is
+  // recognisable in a list without needing an image pipeline behind it.
+  color       String?
+  // Archived rather than deleted is the expected end of a group's life: the
+  // trip is over, the balances are settled, and the history is still worth
+  // keeping. Null means active.
+  archivedAt  DateTime?
+  userId      Int
+  user        User            @relation(fields: [userId], references: [id])
+  members     GroupMember[]
+  expenses    SharedExpense[]
+  settlements Settlement[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Two groups with the same name are as indistinguishable in a list as two
+  // categories are in a picker, and this schema already refuses that.
+  @@unique([userId, name])
+  // Every read is "this user's groups", usually "this user's active groups".
+  @@index([userId, archivedAt])
+}
+
+model GroupMember {
+  id              String               @id @default(uuid())
+  groupId         String
+  group           ExpenseGroup         @relation(fields: [groupId], references: [id])
+  name            String
+  // Free text, for whatever the user needs to tell two Jonahs apart — a phone
+  // number, a workplace, "kuya ni Ana". Never parsed, never dialled.
+  contactNote     String?
+  // Exactly one member per group stands for the account holder, and it is the
+  // hinge the whole feature turns on: it decides which share becomes a
+  // personal expense and whose balance the summary is written from. The
+  // database enforces at most one through a partial unique index that Prisma
+  // cannot express, added by hand in the migration. At least one is enforced
+  // in code, because group creation makes it in the same transaction.
+  isCurrentUser   Boolean              @default(false)
+  // A member who has left, kept because their name still appears on bills that
+  // were split months ago. Archived members are hidden from pickers and cannot
+  // take part in new expenses.
+  archivedAt      DateTime?
+  paidExpenses    SharedExpense[]      @relation("SharedExpensePayer")
+  shares          SharedExpenseShare[]
+  settlementsFrom Settlement[]         @relation("SettlementFrom")
+  settlementsTo   Settlement[]         @relation("SettlementTo")
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Two members with the same name in one group cannot be told apart on a
+  // settlement screen, which is the screen where being wrong costs money.
+  @@unique([groupId, name])
+  @@index([groupId])
+}
+
+model SharedExpense {
+  id                String               @id @default(uuid())
+  groupId           String
+  group             ExpenseGroup         @relation(fields: [groupId], references: [id])
+  description       String
+  // The whole bill, not the user's part of it. What the user consumed lives in
+  // their share row and, when they took part, in the personal expense linked
+  // below.
+  amount            Decimal              @db.Decimal(12, 2)
+  date              DateTime             @default(now())
+  note              String?
+  payerMemberId     String
+  payer             GroupMember          @relation("SharedExpensePayer", fields: [payerMemberId], references: [id])
+  splitMethod       SplitMethod          @default(EQUAL)
+
+  // Required, not optional, and the reason is one column away: Expense.categoryId
+  // has no `?`. A group bill with no category could not be mirrored into a
+  // personal expense at all, so the category is demanded here where the user
+  // can still be asked for one.
+  categoryId        Int
+  category          Category             @relation(fields: [categoryId], references: [id])
+
+  // The user's own share, materialised as an ordinary expense so that reports,
+  // budgets, search and every month total keep their single definition of
+  // personal spending and need no change whatsoever. Null when the user paid
+  // for others without taking part, because they consumed nothing.
+  //
+  // Restrict, deliberately. Prisma defaults an optional relation to SetNull,
+  // which would quietly unlink this the moment someone deleted the mirrored
+  // row — and DELETE /expenses/:id can already reach it. The report would then
+  // understate the user's spending for ever, with nothing raised anywhere.
+  // Restrict turns that into a refusal; Phase 3 turns the refusal into a 409.
+  personalExpenseId Int?                 @unique
+  personalExpense   Expense?             @relation(fields: [personalExpenseId], references: [id], onDelete: Restrict)
+
+  shares            SharedExpenseShare[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  // The shape the group screen reads: one group's bills, newest first.
+  @@index([groupId, date])
+  // Phase 3's category guard counts by this.
+  @@index([categoryId])
+}
+
+model SharedExpenseShare {
+  id              String        @id @default(uuid())
+  sharedExpenseId String
+  // The one cascade in this schema, because it is structural rather than a
+  // product rule: a share is a line of its bill and means nothing without it.
+  // Everything else is deleted explicitly, in code that can be read.
+  sharedExpense   SharedExpense @relation(fields: [sharedExpenseId], references: [id], onDelete: Cascade)
+  memberId        String
+  member          GroupMember   @relation(fields: [memberId], references: [id])
+  // What this member consumed. The sum of these must equal the bill exactly —
+  // that invariant is enforced in groupMoney.js and asserted by the balance
+  // calculator, which refuses to answer at all on a bill that does not add up.
+  amount          Decimal       @db.Decimal(12, 2)
+
+  // A participant cannot appear twice on one bill, and the database is the
+  // right place to say so: validation can be bypassed, a unique index cannot.
+  @@unique([sharedExpenseId, memberId])
+  @@index([memberId])
+}
+
+model Settlement {
+  id           String       @id @default(uuid())
+  groupId      String
+  group        ExpenseGroup @relation(fields: [groupId], references: [id])
+  // Money moving between two members, recorded on its own rather than folded
+  // into the expenses. Keeping them separate is what lets a bill be corrected
+  // months later without disturbing the repayments that already happened.
+  fromMemberId String
+  fromMember   GroupMember  @relation("SettlementFrom", fields: [fromMemberId], references: [id])
+  toMemberId   String
+  toMember     GroupMember  @relation("SettlementTo", fields: [toMemberId], references: [id])
+  amount       Decimal      @db.Decimal(12, 2)
+  date         DateTime     @default(now())
+  // "GCash", "cash", "bank" — a label the user types, never an integration.
+  method       String?
+  note         String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([groupId, date])
 }
