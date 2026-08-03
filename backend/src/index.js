@@ -9,6 +9,7 @@ const expenseRoutes = require('./routes/expense.routes');
 const budgetRoutes = require('./routes/budget.routes');
 const categoryRoutes = require('./routes/category.routes');
 const reportRoutes = require('./routes/report.routes');
+const groupRoutes = require('./routes/group.routes');
 
 dotenv.config();
 
@@ -192,6 +193,7 @@ app.use('/expenses', expenseRoutes);
 app.use('/budget', budgetRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/reports', reportRoutes);
+app.use('/groups', groupRoutes);
 
 app.get('/', (req, res) => {
     res.send('WealthTrack API is running');

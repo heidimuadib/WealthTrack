@@ -389,15 +389,33 @@ const deleteAccount = async (req, res) => {
         // Read before the row goes, or the path goes with it.
         const { avatarUrl } = account;
 
-        // Nothing in this schema cascades, and that is deliberate:
-        // deleteCategory refuses with a 409 to remove a category that still
-        // has expenses, and an onDelete: Cascade from Expense to Category
-        // would quietly undo that guard for every caller, not just this one.
-        // So the rows go explicitly, in foreign-key order — expenses
-        // reference categories, so they lead — inside a single transaction
-        // that removes the whole account or none of it. Every clause is
-        // scoped by userId, so no other account can be reached from here.
+        // Nothing in this schema cascades except a share to its own bill, and
+        // that is deliberate: deleteCategory refuses with a 409 to remove a
+        // category that still has expenses, and an onDelete: Cascade from
+        // Expense to Category would quietly undo that guard for every caller,
+        // not just this one. So the rows go explicitly, in foreign-key order,
+        // inside a single transaction that removes the whole account or none
+        // of it.
+        //
+        // The group tables lead, because a shared expense points at both an
+        // Expense and a Category and would hold either of them in place. They
+        // are reached through their group rather than by a userId of their own
+        // — only ExpenseGroup carries one — which is exactly the relation
+        // filter every group route uses, and it is what keeps this from
+        // touching another account's rows.
+        //
+        // Written now rather than with the endpoints that will fill these
+        // tables: the migration is additive, so every clause below is a no-op
+        // until it is applied, and the alternative is an account deletion that
+        // silently starts leaving group data behind the day it is.
         await prisma.$transaction([
+            prisma.settlement.deleteMany({ where: { group: { userId } } }),
+            prisma.sharedExpenseShare.deleteMany({
+                where: { sharedExpense: { group: { userId } } },
+            }),
+            prisma.sharedExpense.deleteMany({ where: { group: { userId } } }),
+            prisma.groupMember.deleteMany({ where: { group: { userId } } }),
+            prisma.expenseGroup.deleteMany({ where: { userId } }),
             prisma.expense.deleteMany({ where: { userId } }),
             prisma.budget.deleteMany({ where: { userId } }),
             prisma.category.deleteMany({ where: { userId } }),
