@@ -137,6 +137,158 @@ const splitEqual = (totalCentavos, memberIds) => {
     }));
 };
 
+// Percentages carry four decimal places, so a third of a bill can be written
+// as 33.3333% and three of them still add to exactly 100. Held as scaled
+// integers for the same reason money is: 33.3333 + 33.3333 + 33.3334 is only
+// reliably 100 when none of it is a float.
+const PERCENT_SCALE = 10000;
+const FULL_PERCENT = 100 * PERCENT_SCALE;
+const PERCENT_PATTERN = /^(\d+)(?:\.(\d{1,4}))?$/;
+
+const toScaledPercent = (value) => {
+    if (value === null || value === undefined) {
+        fail('Percentage is required');
+    }
+
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+        fail(`Percentage is not a finite number: ${value}`);
+    }
+
+    const text = String(value).trim();
+    const match = PERCENT_PATTERN.exec(text);
+
+    if (!match) {
+        fail(`Percentage is not a valid value: ${text}`);
+    }
+
+    const [, whole, fraction = ''] = match;
+    const scaled = Number(whole) * PERCENT_SCALE + Number(fraction.padEnd(4, '0'));
+
+    if (!Number.isSafeInteger(scaled) || scaled > FULL_PERCENT) {
+        fail(`Percentage is outside the allowed range: ${text}`);
+    }
+
+    return scaled;
+};
+
+const fromScaledPercent = (scaled) =>
+    (scaled / PERCENT_SCALE).toFixed(4).replace(/\.?0+$/, '') || '0';
+
+// The one allocation every weighted split goes through: equal shares, a
+// percentage each, or a 2:1:1 weighting are the same problem with different
+// numbers in the weights.
+//
+// Largest remainder. Each participant gets the whole part of their exact share,
+// and the centavos left over — there are always fewer of them than there are
+// participants — go to whoever was cut by the most, ties broken by member id so
+// the same input always produces the same answer.
+//
+// The multiplication is done in BigInt because it is the one place this can
+// overflow: the largest storable bill is 999,999,999,999 centavos and a
+// percentage weight reaches 1,000,000, whose product is a thousand times past
+// Number.MAX_SAFE_INTEGER. Every value that comes back out is bounded by the
+// total, so the results are ordinary integers again.
+const allocateByWeights = (totalCentavos, entries) => {
+    assertPositiveTotal(totalCentavos);
+    assertMemberIds((entries ?? []).map((entry) => entry?.memberId));
+
+    entries.forEach(({ memberId, weight }) => {
+        if (!isSafeInteger(weight) || weight < 0) {
+            fail(`Weight for ${memberId} must be a whole number of zero or more`);
+        }
+    });
+
+    const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
+
+    if (totalWeight <= 0) {
+        fail('At least one participant must have a share greater than zero');
+    }
+
+    const total = BigInt(totalCentavos);
+    const weightSum = BigInt(totalWeight);
+
+    const allocated = entries
+        .map(({ memberId, weight }) => {
+            const exact = total * BigInt(weight);
+            return {
+                memberId,
+                weight,
+                amountCentavos: Number(exact / weightSum),
+                // How far this participant was cut, as a numerator over the
+                // shared denominator — compared directly, never divided.
+                shortfall: exact % weightSum,
+            };
+        })
+        .sort((a, b) => {
+            if (a.shortfall !== b.shortfall) {
+                return a.shortfall > b.shortfall ? -1 : 1;
+            }
+            return a.memberId < b.memberId ? -1 : a.memberId > b.memberId ? 1 : 0;
+        });
+
+    let remaining = totalCentavos - allocated.reduce((sum, e) => sum + e.amountCentavos, 0);
+
+    allocated.forEach((entry) => {
+        if (remaining > 0) {
+            entry.amountCentavos += 1;
+            remaining -= 1;
+        }
+    });
+
+    return allocated
+        .map(({ memberId, amountCentavos }) => ({ memberId, amountCentavos }))
+        .sort((a, b) => (a.memberId < b.memberId ? -1 : a.memberId > b.memberId ? 1 : 0));
+};
+
+// Percentages must land on exactly 100. Nothing is nudged to make them: a split
+// that adds to 99.99% is a question for whoever typed it.
+const splitByPercentage = (totalCentavos, entries) => {
+    assertPositiveTotal(totalCentavos);
+    assertMemberIds((entries ?? []).map((entry) => entry?.memberId));
+
+    const scaled = entries.map(({ memberId, percentage }) => ({
+        memberId,
+        weight: toScaledPercent(percentage),
+    }));
+
+    const sum = scaled.reduce((running, entry) => running + entry.weight, 0);
+
+    if (sum !== FULL_PERCENT) {
+        fail(`Percentages add up to ${fromScaledPercent(sum)}%, but must add up to 100%`);
+    }
+
+    const shares = allocateByWeights(totalCentavos, scaled);
+    const byMember = new Map(scaled.map((entry) => [entry.memberId, entry.weight]));
+
+    return shares.map((share) => ({
+        ...share,
+        splitInput: fromScaledPercent(byMember.get(share.memberId)),
+    }));
+};
+
+// Weights rather than amounts: 2:1:1 of ₱800 is 400/200/200. Whole numbers
+// only — a share of "one and a half people" is a percentage in disguise, and
+// there is already a method for that.
+const splitByShares = (totalCentavos, entries) => {
+    assertPositiveTotal(totalCentavos);
+    assertMemberIds((entries ?? []).map((entry) => entry?.memberId));
+
+    const weights = entries.map(({ memberId, shares }) => {
+        if (!isSafeInteger(shares) || shares < 0) {
+            fail(`Shares for ${memberId} must be a whole number of zero or more`);
+        }
+        return { memberId, weight: shares };
+    });
+
+    const allocated = allocateByWeights(totalCentavos, weights);
+    const byMember = new Map(weights.map((entry) => [entry.memberId, entry.weight]));
+
+    return allocated.map((share) => ({
+        ...share,
+        splitInput: String(byMember.get(share.memberId)),
+    }));
+};
+
 // Checks a split the user typed themselves, and refuses anything that does not
 // add up. It does not adjust, round, or absorb a difference into the last
 // participant: a bill that is ₱5 short is a question for the person splitting
@@ -355,9 +507,16 @@ const pairBalanceFor = (pairs, memberId, otherMemberId) => {
 
 module.exports = {
     MAX_CENTAVOS,
+    PERCENT_SCALE,
+    FULL_PERCENT,
     toCentavos,
     fromCentavos,
+    toScaledPercent,
+    fromScaledPercent,
+    allocateByWeights,
     splitEqual,
+    splitByPercentage,
+    splitByShares,
     validateCustomSplit,
     calculateMemberBalances,
     calculatePairwiseBalances,

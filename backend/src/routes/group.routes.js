@@ -15,6 +15,13 @@ const {
     unarchiveMember,
     deleteMember,
 } = require('../controllers/groupMember.controller');
+const {
+    listExpenses,
+    getExpense,
+    createExpense,
+    updateExpense,
+    deleteExpense,
+} = require('../controllers/sharedExpense.controller');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -41,5 +48,14 @@ router.put('/:groupId/members/:memberId', updateMember);
 router.delete('/:groupId/members/:memberId', deleteMember);
 router.post('/:groupId/members/:memberId/archive', archiveMember);
 router.post('/:groupId/members/:memberId/unarchive', unarchiveMember);
+
+// Shared expenses. Balances and settlements are deliberately absent — a bill
+// records what was spent, and who ends up owing whom is a separate question
+// answered from these rows rather than stored alongside them.
+router.get('/:groupId/expenses', listExpenses);
+router.post('/:groupId/expenses', createExpense);
+router.get('/:groupId/expenses/:expenseId', getExpense);
+router.put('/:groupId/expenses/:expenseId', updateExpense);
+router.delete('/:groupId/expenses/:expenseId', deleteExpense);
 
 module.exports = router;

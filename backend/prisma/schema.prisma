@@ -9,14 +9,24 @@ datasource db {
 }
 
 // How a shared expense divides its total between the members who took part.
-// EQUAL divides evenly and hands the odd centavos out deterministically;
-// CUSTOM carries an amount per participant that must already add up to the
-// total. Nothing else is offered: percentage and share-based splits are the
-// same arithmetic wearing a different hat, and neither survives a round trip
-// through a Decimal(12,2) column without a second rounding rule to argue about.
+//
+//   EQUAL       divides evenly, odd centavos handed out deterministically
+//   CUSTOM      a fixed amount per participant, which must add up to the total
+//   PERCENTAGE  a percentage per participant, which must add up to exactly 100
+//   SHARES      a weight per participant — 2:1:1 of ₱800 is 400/200/200
+//
+// The last two were added after the first release of this schema. They are the
+// same arithmetic as EQUAL wearing different hats — every one of them is a
+// weighted allocation, and they all end up as exact centavo amounts in the
+// share rows — but they are recorded distinctly because the method is the only
+// thing that says how to render the editor again. Resolved amounts alone
+// cannot be turned back into "20/30/50%": ₱400 of ₱800 is equally 50%, a
+// weight of 2 against 2, or a typed figure.
 enum SplitMethod {
   EQUAL
   CUSTOM
+  PERCENTAGE
+  SHARES
 }
 
 model User {
@@ -286,6 +296,19 @@ model SharedExpenseShare {
   // that invariant is enforced in groupMoney.js and asserted by the balance
   // calculator, which refuses to answer at all on a bill that does not add up.
   amount          Decimal       @db.Decimal(12, 2)
+
+  // What was typed to arrive at that amount, when the method had an input of
+  // its own: the percentage for PERCENTAGE, the weight for SHARES. Null for
+  // EQUAL, which has no input, and for CUSTOM, where the amount is the input.
+  //
+  // Kept because the amount alone cannot be turned back into what produced it.
+  // Without this, reopening a 20/30/50 split would show three fixed figures
+  // and quietly change what the expense claims about itself.
+  //
+  // Four decimal places so a third of a bill can be written as 33.3333% and
+  // still add to exactly 100; the allocation itself never uses this column,
+  // only the amounts above.
+  splitInput      Decimal?      @db.Decimal(12, 4)
 
   // A participant cannot appear twice on one bill, and the database is the
   // right place to say so: validation can be bypassed, a unique index cannot.
