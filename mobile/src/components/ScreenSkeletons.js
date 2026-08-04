@@ -159,6 +159,24 @@ export const CategoryListSkeleton = () => {
     );
 };
 
+// Shaped like the group cards that are coming: a colour dot, a name over a
+// caption, and no third column, because a group card carries no figure. Nothing
+// here stands in for a name or an amount — a skeleton that guessed at either
+// would be showing data that does not exist.
+export const GroupListSkeleton = () => {
+    const { t } = useLanguage();
+
+    return (
+        <SkeletonGroup label={t('loading.groups')} style={styles.list}>
+            {Array.from({ length: ROWS }).map((_, index) => (
+                <SkeletonCard key={index} style={styles.categoryRow}>
+                    <SkeletonListRow dotSize={14} caption amount={false} />
+                </SkeletonCard>
+            ))}
+        </SkeletonGroup>
+    );
+};
+
 // The one place a skeleton stands in for a single row rather than a screen.
 // Without it the chip row collapses to nothing and the save button jumps up
 // the screen the moment categories arrive.
