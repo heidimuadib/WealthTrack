@@ -116,7 +116,18 @@ const resolveShares = (splitMethod, totalCentavos, participants) => {
 
 // Everything about the request that has to be true before anything is written.
 // Returns { error } for the caller to answer with, or the resolved rows.
-const parseWrite = (body, group) => {
+//
+// `allowArchivedMemberIds` names the members an archived-state check should let
+// through. It is empty on create — nobody archived may be put on a new bill —
+// and on update it holds exactly the people this expense already names.
+//
+// Without it, archiving one member froze every bill they had ever appeared on:
+// the create and update paths share this function, so reopening a months-old
+// expense to fix a typo re-sent the same participants and was refused for one
+// of them having left the group since. The alternative the client had was to
+// drop them from the request, which would silently rewrite the split and change
+// what three other people owed.
+const parseWrite = (body, group, { allowArchivedMemberIds = new Set() } = {}) => {
     const description = requiredText(body?.description, {
         label: 'Description',
         max: MAX_DESCRIPTION,
@@ -174,7 +185,9 @@ const parseWrite = (body, group) => {
     if (!payer) {
         return problem('PAYER_NOT_IN_GROUP', 'That payer is not a member of this group');
     }
-    if (payer.archivedAt) {
+    // Kept if this expense already named them; refused if the request is trying
+    // to hand the bill to somebody who has since left.
+    if (payer.archivedAt && !allowArchivedMemberIds.has(payer.id)) {
         return problem('PAYER_ARCHIVED', 'That payer has been archived in this group');
     }
 
@@ -186,7 +199,9 @@ const parseWrite = (body, group) => {
                 'One of those participants is not a member of this group'
             );
         }
-        if (member.archivedAt) {
+        // Same rule as the payer: somebody already on this bill stays on it,
+        // somebody who has left cannot be added to it.
+        if (member.archivedAt && !allowArchivedMemberIds.has(member.id)) {
             return problem(
                 'PARTICIPANT_ARCHIVED',
                 `${member.name} has been archived in this group`
@@ -373,7 +388,16 @@ const updateExpense = async (req, res) => {
             return res.status(404).json({ error: 'Expense not found', code: 'EXPENSE_NOT_FOUND' });
         }
 
-        const parsed = parseWrite(req.body, group);
+        // Exactly the people this expense already names, and nobody else. An
+        // archived member among them may stay; an archived member who is not
+        // may not be added. Removing one is simply leaving them out of the
+        // participants, which the ordinary split rules then have to accept.
+        const allowArchivedMemberIds = new Set([
+            existing.payerMemberId,
+            ...(existing.shares ?? []).map((share) => share.memberId),
+        ]);
+
+        const parsed = parseWrite(req.body, group, { allowArchivedMemberIds });
         if (parsed.error) {
             return badRequest(res, parsed);
         }
