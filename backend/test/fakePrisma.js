@@ -281,11 +281,18 @@ const createFakePrisma = () => {
     const client = Object.fromEntries(MODELS.map((model) => [model, delegate(model)]));
 
     // Both call shapes. The array form is what account deletion uses; the
-    // callback form is what group creation uses. Neither rolls back here —
-    // that is a database property, and its absence is stated in the report.
-    client.$transaction = jest.fn(async (operations) =>
-        typeof operations === 'function' ? operations(client) : Promise.all(operations)
-    );
+    // callback form is what group creation and the settlement engine use, the
+    // latter with an isolation level this records but cannot honour.
+    //
+    // Neither rolls back here, and nothing serialises. Rollback and isolation
+    // are database properties; what a test against this can prove is that the
+    // work was asked for inside one transaction and at which level — not that
+    // PostgreSQL then delivered it. Stated in the report rather than implied.
+    client.__transactionOptions = [];
+    client.$transaction = jest.fn(async (operations, options) => {
+        client.__transactionOptions.push(options ?? null);
+        return typeof operations === 'function' ? operations(client) : Promise.all(operations);
+    });
 
     client.__db = db;
     client.__seedUser = (id, name) => insert('user', { id, name });
