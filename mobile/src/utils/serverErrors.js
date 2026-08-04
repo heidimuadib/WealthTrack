@@ -71,3 +71,22 @@ export const SERVER_MESSAGE_KEYS = {
 // server's own wording rather than invent one.
 export const serverMessageKey = (message) =>
     typeof message === 'string' ? SERVER_MESSAGE_KEYS[message.trim()] : undefined;
+
+// The groups endpoints answer with a stable `code` beside the sentence, which
+// is what the map above wishes it had: matching on prose means a reworded
+// message silently stops being translated, and nothing can detect that.
+//
+// Codes are preferred for anything that has one. Everything that does not — the
+// whole of the older API — still goes through the prose map above, unchanged,
+// so nothing that worked before behaves differently now.
+//
+// Only the codes this phase can actually produce are listed. The rest arrive
+// with the screens that raise them, rather than as a wall of unused keys.
+export const SERVER_CODE_KEYS = {
+    EXPENSE_IS_SHARED: 'server.expenseIsShared',
+    GROUP_NOT_FOUND: 'server.groupNotFound',
+    GROUP_ARCHIVED: 'server.groupArchived',
+};
+
+export const serverCodeKey = (code) =>
+    typeof code === 'string' ? SERVER_CODE_KEYS[code.trim()] : undefined;

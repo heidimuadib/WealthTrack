@@ -3,7 +3,7 @@
 // spending. These turn a failure into something worth showing the user.
 
 import { translate } from '../i18n';
-import { serverMessageKey } from './serverErrors';
+import { serverMessageKey, serverCodeKey } from './serverErrors';
 
 // A 401 is already handled globally by the response interceptor, which clears
 // the session and sends the user back to the login screen. Showing an error for
@@ -27,6 +27,16 @@ export const errorMessage = (error) => {
 
     if (status >= 500) {
         return translate('errors.server');
+    }
+
+    // A stable code, where the endpoint has one. Preferred over the sentence
+    // beside it because a code survives rewording and matching on prose does
+    // not — and nothing can detect a server sentence that quietly stopped
+    // matching. Only the groups endpoints send these; everything older falls
+    // straight through to the message map below, exactly as before.
+    const codeKey = serverCodeKey(error?.response?.data?.code);
+    if (codeKey) {
+        return translate(codeKey);
     }
 
     // 4xx responses carry a message written for exactly this situation, in
