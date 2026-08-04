@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { Receipt, Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { Receipt, Search, SlidersHorizontal, Users, X } from 'lucide-react-native';
 
 import Input from '../components/Input';
 import MonthSelector from '../components/MonthSelector';
@@ -39,6 +39,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { queryKeys } from '../lib/queryKeys';
 import { currentMonthYear, formatCurrency, formatDayLabel } from '../utils/format';
+import { isSharedMirror, expenseRoute } from '../utils/sharedExpense';
 
 // Stable reference for the not-yet-loaded case, so the memos below are not
 // invalidated by a fresh [] on every render.
@@ -303,58 +304,91 @@ const ExpensesScreen = ({ navigation }) => {
         );
     };
 
-    const renderItem = ({ item }) => (
-        <SwipeableRow
-            ref={(row) => {
-                if (!row) {
-                    return;
+    const renderItem = ({ item }) => {
+        // A share of a group bill, kept in step by the server. It is somebody's
+        // ledger rather than this user's own note to themselves, so none of the
+        // ways this list edits a row apply to it — the swipe, the long press
+        // and the rotor action are all withheld rather than left to fail, and
+        // tapping opens the group expense instead. The server refuses these
+        // routes as well; this is so the app never asks.
+        const shared = isSharedMirror(item);
+
+        const row = (
+            <TouchableOpacity
+                style={styles.row}
+                onPress={() => navigation.navigate(...expenseRoute(item))}
+                onLongPress={shared ? undefined : () => confirmThenDelete(item)}
+                activeOpacity={0.7}
+                accessibilityActions={shared ? undefined : ROW_ACTIONS}
+                onAccessibilityAction={
+                    shared
+                        ? undefined
+                        : (event) => {
+                              if (event.nativeEvent.actionName === 'delete') {
+                                  confirmThenDelete(item);
+                              }
+                          }
                 }
-                rowRefs.current.set(item.id, row);
-            }}
-            onSwipeOpen={() => {
-                // Opening a second row closes the first, so the list never
-                // carries a trail of half-swiped rows.
-                const next = rowRefs.current.get(item.id);
-                if (openRow.current && openRow.current !== next) {
-                    openRow.current.close?.();
-                }
-                openRow.current = next;
-            }}
-            onDelete={() => performDelete(item)}
-        >
-        <TouchableOpacity
-            style={styles.row}
-            onPress={() => navigation.navigate('EditExpense', { expense: item })}
-            onLongPress={() => confirmThenDelete(item)}
-            activeOpacity={0.7}
-            // The swipe is a shortcut, never the only way. A screen reader
-            // reaches the same delete through the actions rotor, and it goes
-            // through the confirmation rather than straight to removal.
-            accessibilityActions={ROW_ACTIONS}
-            onAccessibilityAction={(event) => {
-                if (event.nativeEvent.actionName === 'delete') {
-                    confirmThenDelete(item);
-                }
-            }}
-        >
-            <View
-                style={[
-                    styles.dot,
-                    { backgroundColor: item.category?.color || colors.textMuted },
-                ]}
-            />
-            <View style={styles.rowMain}>
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                    {item.notes || item.category?.name || t('home.expenseFallback')}
-                </Text>
-                <Text style={styles.rowMeta}>
-                    {item.category?.name || t('expenses.uncategorised')}
-                </Text>
-            </View>
-            <Text style={styles.rowAmount}>−{formatCurrency(item.amount)}</Text>
-        </TouchableOpacity>
-        </SwipeableRow>
-    );
+                // Said out loud, because the badge beside the title is a
+                // colour and a glyph, and neither is a sentence.
+                accessibilityHint={shared ? t('expenses.sharedA11y') : undefined}
+            >
+                <View
+                    style={[
+                        styles.dot,
+                        { backgroundColor: item.category?.color || colors.textMuted },
+                    ]}
+                />
+                <View style={styles.rowMain}>
+                    <View style={styles.rowTitleLine}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
+                            {item.notes || item.category?.name || t('home.expenseFallback')}
+                        </Text>
+                        {shared ? (
+                            <View style={styles.sharedBadge}>
+                                <Users color={colors.brand} size={11} />
+                                <Text style={styles.sharedBadgeText}>
+                                    {t('expenses.sharedBadge')}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
+                    <Text style={styles.rowMeta}>
+                        {item.category?.name || t('expenses.uncategorised')}
+                    </Text>
+                </View>
+                <Text style={styles.rowAmount}>−{formatCurrency(item.amount)}</Text>
+            </TouchableOpacity>
+        );
+
+        // Not wrapped at all when shared: SwipeableRow always renders its
+        // delete panel, and a delete that is revealed and then refused is worse
+        // than one that was never offered.
+        if (shared) {
+            return row;
+        }
+
+        return (
+            <SwipeableRow
+                ref={(handle) => {
+                    if (!handle) {
+                        return;
+                    }
+                    rowRefs.current.set(item.id, handle);
+                }}
+                onSwipeOpen={() => {
+                    const next = rowRefs.current.get(item.id);
+                    if (openRow.current && openRow.current !== next) {
+                        openRow.current.close?.();
+                    }
+                    openRow.current = next;
+                }}
+                onDelete={() => performDelete(item)}
+            >
+                {row}
+            </SwipeableRow>
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -526,7 +560,30 @@ const createStyles = ({ colors, typography }) =>
     rowMain: {
         flex: 1,
     },
+    rowTitleLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    // A glyph and a word together, never colour alone: a badge only a sighted
+    // reader with full colour vision can decode is not a badge. The row also
+    // carries an accessibility hint saying the same thing in a sentence.
+    sharedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: spacing.s,
+        paddingHorizontal: spacing.s,
+        paddingVertical: 2,
+        borderRadius: radius.round,
+        backgroundColor: colors.brandTint,
+    },
+    sharedBadgeText: {
+        marginLeft: 4,
+        fontSize: 10,
+        fontWeight: '700',
+        color: colors.brand,
+    },
     rowTitle: {
+        flexShrink: 1,
         fontSize: 15,
         fontWeight: '500',
         color: colors.textPrimary,
