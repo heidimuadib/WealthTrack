@@ -54,6 +54,35 @@ const INCLUDES = {
         shares: { model: 'sharedExpenseShare', foreignKey: 'sharedExpenseId', many: true },
         group: { model: 'expenseGroup', parentKey: 'groupId', many: false },
     },
+    // The back-relation the mirror guard reads: the bill, if any, whose
+    // personalExpenseId points at this expense. One-to-one, so a single row or
+    // null rather than a list.
+    expense: {
+        category: { model: 'category', parentKey: 'categoryId', many: false },
+        sharedExpense: { model: 'sharedExpense', foreignKey: 'personalExpenseId', many: false },
+    },
+};
+
+// The group tables use uuid primary keys; everything that predates them uses
+// autoincrementing integers. Modelled rather than glossed over, because the
+// expense routes parse their id with parseInt — a uuid where an integer belongs
+// is refused as a malformed request long before ownership is considered, and a
+// double that got this wrong would report a 400 as though it were a 404.
+const INT_ID_MODELS = new Set(['user', 'category', 'expense', 'budget']);
+
+// Nullable columns, per model. A blanket set of defaults would give every table
+// every other table's columns — which is how a fake ends up reporting a
+// personalExpenseId on a row that has no such column in the schema.
+const DEFAULTS = {
+    user: { name: null },
+    category: { color: null, icon: null },
+    expense: { notes: null, receiptUrl: null },
+    budget: {},
+    expenseGroup: { description: null, color: null, archivedAt: null },
+    groupMember: { contactNote: null, isCurrentUser: false, archivedAt: null },
+    sharedExpense: { note: null, personalExpenseId: null },
+    sharedExpenseShare: { splitInput: null },
+    settlement: { method: null, note: null },
 };
 
 const prismaError = (code) => {
@@ -65,12 +94,16 @@ const prismaError = (code) => {
 const createFakePrisma = () => {
     const db = Object.fromEntries(MODELS.map((model) => [model, []]));
     let sequence = 0;
-    // Shaped like a real v4 uuid, because the routes validate the format before
-    // they look anything up — an id of the wrong shape would be refused as a
-    // malformed request and never reach the ownership check these tests exist
-    // to exercise. Counter-based rather than random so failures reproduce.
-    const nextId = () =>
-        `00000000-0000-4000-8000-${String((sequence += 1)).padStart(12, '0')}`;
+    let intSequence = 0;
+    // Uuids shaped like real v4 ones, because the group routes validate the
+    // format before they look anything up — an id of the wrong shape would be
+    // refused as malformed and never reach the ownership check these tests
+    // exist to exercise. Counter-based rather than random so failures
+    // reproduce.
+    const nextId = (model) =>
+        INT_ID_MODELS.has(model)
+            ? (intSequence += 1)
+            : `00000000-0000-4000-8000-${String((sequence += 1)).padStart(12, '0')}`;
 
     const matches = (model, row, where = {}) =>
         Object.entries(where).every(([key, expected]) => {
@@ -83,8 +116,28 @@ const createFakePrisma = () => {
                 return parent ? matches(relation.model, parent, expected) : false;
             }
 
-            if (expected && typeof expected === 'object' && 'not' in expected) {
-                return row[key] !== expected.not;
+            if (expected && typeof expected === 'object' && !(expected instanceof Date)) {
+                if ('not' in expected) {
+                    return row[key] !== expected.not;
+                }
+
+                // Range filters, which is how the expense routes scope a month.
+                const ordinal = (value) => (value instanceof Date ? value.getTime() : value);
+                const actual = ordinal(row[key]);
+                const checks = [
+                    ['gte', (a, b) => a >= b],
+                    ['gt', (a, b) => a > b],
+                    ['lte', (a, b) => a <= b],
+                    ['lt', (a, b) => a < b],
+                ];
+
+                return checks.every(([operator, compare]) =>
+                    operator in expected ? compare(actual, ordinal(expected[operator])) : true
+                );
+            }
+
+            if (row[key] instanceof Date && expected instanceof Date) {
+                return row[key].getTime() === expected.getTime();
             }
 
             return row[key] === expected;
@@ -135,17 +188,30 @@ const createFakePrisma = () => {
             }
 
             const nested = typeof request === 'object' ? request : {};
-
-            if (relation.many) {
-                const rows = findAll(relation.model, { [relation.foreignKey]: row.id });
-                shaped[key] = sortRows(rows, nested.orderBy).map((child) =>
-                    withInclude(relation.model, child, nested.include)
+            // A relation may be asked for with a select rather than a full
+            // include — `sharedExpense: { select: { id, groupId } }` — and the
+            // difference matters here, because the point of that select is to
+            // hand the client two ids and nothing else.
+            const project = (child) => {
+                if (!child) return null;
+                const shapedChild = withInclude(relation.model, child, nested.include);
+                if (!nested.select) return shapedChild;
+                return Object.fromEntries(
+                    Object.keys(nested.select).map((field) => [field, shapedChild[field]])
                 );
+            };
+
+            if (relation.foreignKey) {
+                // Children pointing back at this row.
+                const rows = findAll(relation.model, { [relation.foreignKey]: row.id });
+                shaped[key] = relation.many
+                    ? sortRows(rows, nested.orderBy).map(project)
+                    : project(rows[0]);
             } else {
                 const parent = db[relation.model].find(
                     (candidate) => candidate.id === row[relation.parentKey]
                 );
-                shaped[key] = withInclude(relation.model, parent, nested.include) ?? null;
+                shaped[key] = project(parent);
             }
         });
 
@@ -197,15 +263,8 @@ const createFakePrisma = () => {
         Object.keys(NESTED[model] ?? {}).forEach((key) => delete scalars[key]);
 
         const row = {
-            id: scalars.id ?? nextId(),
-            archivedAt: null,
-            contactNote: null,
-            description: null,
-            color: null,
-            isCurrentUser: false,
-            note: null,
-            splitInput: null,
-            personalExpenseId: null,
+            id: scalars.id ?? nextId(model),
+            ...(DEFAULTS[model] ?? {}),
             createdAt: now(),
             updatedAt: now(),
             ...scalars,
@@ -254,6 +313,19 @@ const createFakePrisma = () => {
             writeNested(model, row, data);
 
             return withInclude(model, row, include);
+        }),
+        updateMany: jest.fn(async ({ where, data } = {}) => {
+            const rows = findAll(model, where);
+
+            rows.forEach((row) => {
+                const scalars = { ...data };
+                Object.keys(NESTED[model] ?? {}).forEach((key) => delete scalars[key]);
+                const updated = { ...row, ...scalars, updatedAt: now() };
+                assertUnique(model, updated, row.id);
+                Object.assign(row, updated);
+            });
+
+            return { count: rows.length };
         }),
         delete: jest.fn(async ({ where }) => {
             const index = db[model].findIndex((candidate) => candidate.id === where.id);

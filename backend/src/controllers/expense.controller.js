@@ -27,6 +27,29 @@ const ownsCategory = async (categoryId, userId) => {
     return category !== null;
 };
 
+// Some expenses in this table are not the user's own bookkeeping: when a group
+// bill includes them, their share is written here so that reports, budgets and
+// month totals keep one definition of personal spending. Those rows belong to
+// the group ledger, and the only thing allowed to write them is syncMirror.
+//
+// Editing one here would set Expense.amount to something the group's shares no
+// longer add up to, and nothing would say so — the group screen and the
+// expenses screen would simply disagree about the same money for ever.
+const SHARED_MIRROR = {
+    error: 'This came from a group expense. Open the group to change it.',
+    code: 'EXPENSE_IS_SHARED',
+};
+
+// Answers both questions the write paths need in one query, and in the right
+// order: is this row the caller's, and is it a mirror? Scoped by userId, so
+// another account's expense is simply not found — it must stay a 404, because
+// a 409 would confirm the id exists.
+const findOwnedExpense = (id, userId) =>
+    prisma.expense.findFirst({
+        where: { id, userId },
+        include: { sharedExpense: { select: { id: true } } },
+    });
+
 const getExpenses = async (req, res) => {
     const { month, year } = req.query;
 
@@ -47,7 +70,16 @@ const getExpenses = async (req, res) => {
 
         const expenses = await prisma.expense.findMany({
             where,
-            include: { category: true },
+            include: {
+                category: true,
+                // Null for an ordinary expense; for a share of a group bill,
+                // the two ids the app needs to badge the row and open the
+                // group expense behind it. Deliberately nothing else — not the
+                // shares, not the payer, not a member name, and not
+                // personalExpenseId, which points the other way and is the
+                // app's business to never hold.
+                sharedExpense: { select: { id: true, groupId: true } },
+            },
             orderBy: { date: 'desc' },
         });
         res.json(expenses);
@@ -142,6 +174,18 @@ const updateExpense = async (req, res) => {
             return res.status(404).json({ error: 'Category not found' });
         }
 
+        // Ownership first, then the mirror check — in that order, so another
+        // account's row is 404 rather than a 409 that would confirm it exists.
+        const existing = await findOwnedExpense(id, req.user.id);
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+
+        if (existing.sharedExpense) {
+            return res.status(409).json(SHARED_MIRROR);
+        }
+
         // Scoping to userId is what prevents one user from editing another's
         // expense by guessing a sequential id.
         const { count } = await prisma.expense.updateMany({
@@ -171,6 +215,25 @@ const deleteExpense = async (req, res) => {
     }
 
     try {
+        // Ownership first, then the mirror check, for the same reason as the
+        // update path: another account's row must stay a 404.
+        //
+        // The database would refuse this anyway — personalExpenseId is
+        // declared onDelete: Restrict precisely so a mirror cannot be pulled
+        // out from under its bill — but it would arrive as a foreign-key
+        // violation and surface as a 500 carrying a constraint name. This
+        // turns it into a sentence the user can act on, and leaves the link
+        // between bill and mirror untouched.
+        const existing = await findOwnedExpense(id, req.user.id);
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Expense not found' });
+        }
+
+        if (existing.sharedExpense) {
+            return res.status(409).json(SHARED_MIRROR);
+        }
+
         const { count } = await prisma.expense.deleteMany({
             where: { id, userId: req.user.id },
         });
