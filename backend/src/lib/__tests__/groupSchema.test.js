@@ -32,7 +32,7 @@ describe('schema', () => {
         NEW_MODELS.forEach((name) => expect(modelBlock(name)).not.toBeNull());
     });
 
-    it('declares the SplitMethod enum with exactly the two approved methods', () => {
+    it('declares the SplitMethod enum with all four supported methods', () => {
         const block = /^enum SplitMethod \{([\s\S]*?)^\}/m.exec(schema);
         expect(block).not.toBeNull();
 
@@ -40,7 +40,16 @@ describe('schema', () => {
             .split('\n')
             .map((line) => line.trim())
             .filter((line) => line && !line.startsWith('//'));
-        expect(values).toEqual(['EQUAL', 'CUSTOM']);
+        // CUSTOM is fixed amounts; it kept its original name rather than being
+        // renamed in a migration that had already shipped.
+        expect(values).toEqual(['EQUAL', 'CUSTOM', 'PERCENTAGE', 'SHARES']);
+    });
+
+    it('keeps what was typed to produce a share', () => {
+        // A resolved amount cannot be turned back into 20% or a weight of 2.
+        expect(modelBlock('SharedExpenseShare')).toMatch(
+            /splitInput\s+Decimal\?\s+@db\.Decimal\(12, 4\)/
+        );
     });
 
     it('gives every new model a uuid string id', () => {
@@ -136,10 +145,48 @@ describe('the money conversion list', () => {
     });
 });
 
+const SPLIT_MIGRATION_NAME = '20260804034500_split_methods_percentage_and_shares';
+const splitMigration = fs.readFileSync(
+    path.join(prismaDir, 'migrations', SPLIT_MIGRATION_NAME, 'migration.sql'),
+    'utf8'
+);
+
+describe('the split-methods migration', () => {
+    it('comes after the one that created the tables', () => {
+        const all = fs
+            .readdirSync(path.join(prismaDir, 'migrations'))
+            .filter((entry) => /^\d/.test(entry))
+            .sort();
+        expect(all[all.length - 1]).toBe(SPLIT_MIGRATION_NAME);
+        expect(SPLIT_MIGRATION_NAME > MIGRATION_NAME).toBe(true);
+    });
+
+    it('adds the two new enum values without rewriting the type', () => {
+        expect(splitMigration).toMatch(/ALTER TYPE "SplitMethod" ADD VALUE 'PERCENTAGE'/);
+        expect(splitMigration).toMatch(/ALTER TYPE "SplitMethod" ADD VALUE 'SHARES'/);
+        expect(splitMigration).not.toMatch(/DROP TYPE|CREATE TYPE/);
+    });
+
+    it('adds one nullable column and nothing else', () => {
+        expect(splitMigration).toMatch(
+            /ALTER TABLE "SharedExpenseShare" ADD COLUMN\s+"splitInput" DECIMAL\(12,4\)/
+        );
+        // Nullable, so no row is rewritten and no default has to be backfilled.
+        expect(splitMigration).not.toMatch(/NOT NULL/);
+    });
+
+    it('drops nothing and touches no pre-existing table', () => {
+        expect(splitMigration).not.toMatch(/\bDROP\b/i);
+        const altered = [...splitMigration.matchAll(/ALTER TABLE "(\w+)"/g)].map(([, n]) => n);
+        expect(altered).toEqual(['SharedExpenseShare']);
+        ['User', 'Expense', 'Budget', 'Category'].forEach((table) => {
+            expect(new RegExp(`ALTER TABLE "${table}"`).test(splitMigration)).toBe(false);
+        });
+    });
+});
+
 describe('migration', () => {
     it('sorts after the password reset migration', () => {
-        const all = fs.readdirSync(path.join(prismaDir, 'migrations')).filter((entry) => /^\d/.test(entry));
-        expect(all[all.length - 1]).toBe(MIGRATION_NAME);
         expect(MIGRATION_NAME > '20260802220000_password_reset').toBe(true);
     });
 

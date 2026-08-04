@@ -36,12 +36,25 @@ const UNIQUES = {
 
 const MODELS = [
     'user',
+    'category',
+    'expense',
     'expenseGroup',
     'groupMember',
     'sharedExpense',
     'sharedExpenseShare',
     'settlement',
 ];
+
+// Which include key on which model pulls which rows. Only the shapes the
+// controllers actually ask for — anything else would be inventing behaviour to
+// test against.
+const INCLUDES = {
+    expenseGroup: { members: { model: 'groupMember', foreignKey: 'groupId', many: true } },
+    sharedExpense: {
+        shares: { model: 'sharedExpenseShare', foreignKey: 'sharedExpenseId', many: true },
+        group: { model: 'expenseGroup', parentKey: 'groupId', many: false },
+    },
+};
 
 const prismaError = (code) => {
     const error = new Error(`Fake Prisma error ${code}`);
@@ -99,8 +112,6 @@ const createFakePrisma = () => {
         });
     };
 
-    // Only the shapes the group controllers ask for: members, and a member
-    // count. Anything else would be inventing behaviour to test against.
     const withInclude = (model, row, include) => {
         if (!row || !include) {
             return row;
@@ -108,14 +119,35 @@ const createFakePrisma = () => {
 
         const shaped = { ...row };
 
-        if (include.members) {
-            const members = findAll('groupMember', { groupId: row.id });
-            shaped.members = sortRows(members, include.members.orderBy);
-        }
+        Object.entries(include).forEach(([key, request]) => {
+            if (key === '_count') {
+                if (request?.select?.members) {
+                    shaped._count = {
+                        members: findAll('groupMember', { groupId: row.id }).length,
+                    };
+                }
+                return;
+            }
 
-        if (include._count?.select?.members) {
-            shaped._count = { members: findAll('groupMember', { groupId: row.id }).length };
-        }
+            const relation = INCLUDES[model]?.[key];
+            if (!relation || request === false) {
+                return;
+            }
+
+            const nested = typeof request === 'object' ? request : {};
+
+            if (relation.many) {
+                const rows = findAll(relation.model, { [relation.foreignKey]: row.id });
+                shaped[key] = sortRows(rows, nested.orderBy).map((child) =>
+                    withInclude(relation.model, child, nested.include)
+                );
+            } else {
+                const parent = db[relation.model].find(
+                    (candidate) => candidate.id === row[relation.parentKey]
+                );
+                shaped[key] = withInclude(relation.model, parent, nested.include) ?? null;
+            }
+        });
 
         return shaped;
     };
@@ -140,8 +172,30 @@ const createFakePrisma = () => {
 
     const now = () => new Date('2026-08-04T00:00:00.000Z');
 
+    // Nested writes the controllers use: a group creating its self-member, and
+    // an expense creating its shares.
+    const NESTED = {
+        expenseGroup: { members: { model: 'groupMember', foreignKey: 'groupId' } },
+        sharedExpense: { shares: { model: 'sharedExpenseShare', foreignKey: 'sharedExpenseId' } },
+    };
+
+    const writeNested = (model, row, data) => {
+        Object.entries(NESTED[model] ?? {}).forEach(([key, relation]) => {
+            const request = data[key];
+            if (!request?.create) {
+                return;
+            }
+            const children = Array.isArray(request.create) ? request.create : [request.create];
+            children.forEach((child) =>
+                insert(relation.model, { ...child, [relation.foreignKey]: row.id })
+            );
+        });
+    };
+
     const insert = (model, data) => {
-        const { members, ...scalars } = data;
+        const scalars = { ...data };
+        Object.keys(NESTED[model] ?? {}).forEach((key) => delete scalars[key]);
+
         const row = {
             id: scalars.id ?? nextId(),
             archivedAt: null,
@@ -149,6 +203,9 @@ const createFakePrisma = () => {
             description: null,
             color: null,
             isCurrentUser: false,
+            note: null,
+            splitInput: null,
+            personalExpenseId: null,
             createdAt: now(),
             updatedAt: now(),
             ...scalars,
@@ -156,13 +213,7 @@ const createFakePrisma = () => {
 
         assertUnique(model, row);
         db[model].push(row);
-
-        // Nested create, which is how a group and its self-member are written
-        // in one statement.
-        if (members?.create) {
-            const nested = Array.isArray(members.create) ? members.create : [members.create];
-            nested.forEach((child) => insert('groupMember', { ...child, groupId: row.id }));
-        }
+        writeNested(model, row, data);
 
         return row;
     };
@@ -193,10 +244,31 @@ const createFakePrisma = () => {
         update: jest.fn(async ({ where, data, include }) => {
             const row = db[model].find((candidate) => candidate.id === where.id);
             if (!row) throw prismaError('P2025');
-            const updated = { ...row, ...data, updatedAt: now() };
+
+            const scalars = { ...data };
+            Object.keys(NESTED[model] ?? {}).forEach((key) => delete scalars[key]);
+
+            const updated = { ...row, ...scalars, updatedAt: now() };
             assertUnique(model, updated, row.id);
             Object.assign(row, updated);
+            writeNested(model, row, data);
+
             return withInclude(model, row, include);
+        }),
+        delete: jest.fn(async ({ where }) => {
+            const index = db[model].findIndex((candidate) => candidate.id === where.id);
+            if (index === -1) throw prismaError('P2025');
+
+            // The mirror link is declared onDelete: Restrict, so a row still
+            // pointed at cannot go. Modelled here because the ordering it
+            // forces is the whole reason deleteWithMirror exists.
+            if (model === 'expense') {
+                const held = db.sharedExpense.some((row) => row.personalExpenseId === where.id);
+                if (held) throw prismaError('P2003');
+            }
+
+            const [removed] = db[model].splice(index, 1);
+            return removed;
         }),
         deleteMany: jest.fn(async ({ where } = {}) => {
             const doomed = findAll(model, where);

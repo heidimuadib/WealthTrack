@@ -543,12 +543,16 @@ describe('deleting a group', () => {
 
     it('never touches a normal expense', async () => {
         const group = await makeGroup(ALICE, 'Bohol Laag');
+        prisma.__db.expense.push({ id: 500, userId: ALICE, amount: '100', categoryId: 1 });
 
         await call(groups.deleteGroup, { params: { groupId: group.id } });
 
-        // The group controller has no business reaching the Expense table, and
-        // the user's own spending survives the group it sat beside.
-        expect(prisma.expense).toBeUndefined();
+        // The user's own spending survives the group it sat beside — deleting
+        // a trip is not a reason to lose what they actually paid for.
+        expect(prisma.__db.expense).toHaveLength(1);
+        ['create', 'update', 'delete', 'deleteMany'].forEach((method) =>
+            expect(prisma.expense[method]).not.toHaveBeenCalled()
+        );
     });
 
     it('leaves another account’s rows alone', async () => {

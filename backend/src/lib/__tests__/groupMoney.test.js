@@ -2,7 +2,11 @@ const {
     MAX_CENTAVOS,
     toCentavos,
     fromCentavos,
+    toScaledPercent,
+    allocateByWeights,
     splitEqual,
+    splitByPercentage,
+    splitByShares,
     validateCustomSplit,
     calculateMemberBalances,
     calculatePairwiseBalances,
@@ -205,6 +209,170 @@ describe('splitEqual', () => {
                 expect(Math.max(...amounts) - Math.min(...amounts)).toBeLessThanOrEqual(1);
             }
         }
+    });
+});
+
+describe('allocateByWeights', () => {
+    const sum = (shares) => shares.reduce((running, s) => running + s.amountCentavos, 0);
+
+    it('agrees with splitEqual whenever the weights are equal', () => {
+        // The two are the same allocation; this pins that they cannot drift.
+        for (let count = 1; count <= 9; count += 1) {
+            const ids = Array.from({ length: count }, (_, i) => `m-${String(i).padStart(2, '0')}`);
+            for (let total = 1; total <= 200; total += 3) {
+                const weighted = allocateByWeights(
+                    total,
+                    ids.map((memberId) => ({ memberId, weight: 1 }))
+                );
+                expect({ count, total, weighted }).toEqual({
+                    count,
+                    total,
+                    weighted: splitEqual(total, ids),
+                });
+            }
+        }
+    });
+
+    it('gives the leftover centavos to whoever was cut the most', () => {
+        // 100 centavos, weights 1:1:1 — each exactly 33⅓, so the tie is broken
+        // by member id and the first gets the extra.
+        expect(allocateByWeights(100, [
+            { memberId: 'c', weight: 1 },
+            { memberId: 'a', weight: 1 },
+            { memberId: 'b', weight: 1 },
+        ])).toEqual([
+            { memberId: 'a', amountCentavos: 34 },
+            { memberId: 'b', amountCentavos: 33 },
+            { memberId: 'c', amountCentavos: 33 },
+        ]);
+    });
+
+    it('never loses a centavo across many weightings', () => {
+        const weightSets = [[1, 2], [2, 1, 1], [3, 5, 7], [1, 1, 1, 1, 1, 1, 7], [10, 1]];
+
+        weightSets.forEach((weights) => {
+            const entries = weights.map((weight, i) => ({ memberId: `m-${i}`, weight }));
+            for (let total = 1; total <= 500; total += 7) {
+                expect({ weights, total, sum: sum(allocateByWeights(total, entries)) }).toEqual({
+                    weights,
+                    total,
+                    sum: total,
+                });
+            }
+        });
+    });
+
+    it('stays exact at the top of the storable range', () => {
+        // total x weight overflows a double here; the allocation is done in
+        // BigInt for exactly this reason.
+        const shares = allocateByWeights(MAX_CENTAVOS, [
+            { memberId: 'a', weight: 1000000 },
+            { memberId: 'b', weight: 1 },
+        ]);
+        expect(sum(shares)).toBe(MAX_CENTAVOS);
+    });
+
+    it('allows a weight of zero but not a set that is all zero', () => {
+        expect(
+            allocateByWeights(100, [
+                { memberId: 'a', weight: 1 },
+                { memberId: 'b', weight: 0 },
+            ])
+        ).toEqual([
+            { memberId: 'a', amountCentavos: 100 },
+            { memberId: 'b', amountCentavos: 0 },
+        ]);
+
+        expect(() =>
+            allocateByWeights(100, [
+                { memberId: 'a', weight: 0 },
+                { memberId: 'b', weight: 0 },
+            ])
+        ).toThrow(/greater than zero/);
+    });
+
+    it('refuses duplicates, negatives and fractions', () => {
+        expect(() =>
+            allocateByWeights(100, [
+                { memberId: 'a', weight: 1 },
+                { memberId: 'a', weight: 1 },
+            ])
+        ).toThrow(/twice/);
+        expect(() => allocateByWeights(100, [{ memberId: 'a', weight: -1 }])).toThrow(/zero or more/);
+        expect(() => allocateByWeights(100, [{ memberId: 'a', weight: 1.5 }])).toThrow(/zero or more/);
+    });
+});
+
+describe('toScaledPercent', () => {
+    it('scales to four decimal places', () => {
+        expect(toScaledPercent('20')).toBe(200000);
+        expect(toScaledPercent('33.3333')).toBe(333333);
+        expect(toScaledPercent(100)).toBe(1000000);
+        expect(toScaledPercent('0')).toBe(0);
+    });
+
+    it('refuses more than four decimals, negatives and rubbish', () => {
+        ['33.33333', '-5', 'half', '', '1e2', null].forEach((value) => {
+            expect(() => toScaledPercent(value)).toThrow();
+        });
+    });
+
+    it('refuses more than 100%', () => {
+        expect(() => toScaledPercent('101')).toThrow(/allowed range/);
+    });
+});
+
+describe('splitByPercentage', () => {
+    it('applies 20 / 30 / 50 to ₱500', () => {
+        const shares = splitByPercentage(50000, [
+            { memberId: 'b', percentage: '20' },
+            { memberId: 'a', percentage: '50' },
+            { memberId: 'c', percentage: '30' },
+        ]);
+
+        expect(shares).toEqual([
+            { memberId: 'a', amountCentavos: 25000, splitInput: '50' },
+            { memberId: 'b', amountCentavos: 10000, splitInput: '20' },
+            { memberId: 'c', amountCentavos: 15000, splitInput: '30' },
+        ]);
+    });
+
+    it('adds to the total even when the percentages are thirds', () => {
+        const shares = splitByPercentage(10000, [
+            { memberId: 'a', percentage: '33.3333' },
+            { memberId: 'b', percentage: '33.3333' },
+            { memberId: 'c', percentage: '33.3334' },
+        ]);
+        expect(shares.reduce((sum, s) => sum + s.amountCentavos, 0)).toBe(10000);
+    });
+
+    it('refuses anything that is not exactly 100', () => {
+        expect(() =>
+            splitByPercentage(10000, [
+                { memberId: 'a', percentage: '50' },
+                { memberId: 'b', percentage: '49.9999' },
+            ])
+        ).toThrow(/99.9999%.*100%/);
+    });
+});
+
+describe('splitByShares', () => {
+    it('divides ₱800 by 2:1:1', () => {
+        const shares = splitByShares(80000, [
+            { memberId: 'paul', shares: 2 },
+            { memberId: 'john', shares: 1 },
+            { memberId: 'mike', shares: 1 },
+        ]);
+
+        expect(shares).toEqual([
+            { memberId: 'john', amountCentavos: 20000, splitInput: '1' },
+            { memberId: 'mike', amountCentavos: 20000, splitInput: '1' },
+            { memberId: 'paul', amountCentavos: 40000, splitInput: '2' },
+        ]);
+    });
+
+    it('refuses a fractional weight', () => {
+        expect(() => splitByShares(1000, [{ memberId: 'a', shares: 1.5 }])).toThrow(/whole number/);
     });
 });
 
