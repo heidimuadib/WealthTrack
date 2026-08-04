@@ -82,10 +82,28 @@ export const serverMessageKey = (message) =>
 //
 // Only the codes this phase can actually produce are listed. The rest arrive
 // with the screens that raise them, rather than as a wall of unused keys.
+// Every code below is one the backend actually returns — taken from
+// groupAccess.js, groupValidation.js and the two group controllers rather than
+// from a guess. Inventing one would produce a key that never renders and a
+// translation nobody ever sees.
+//
+// The plain validation codes (NAME_REQUIRED, NAME_TOO_LONG, INVALID_TEXT,
+// TEXT_TOO_LONG, INVALID_ID) are deliberately absent: the client checks the
+// same rules before submitting and words them for the field they belong to, so
+// a server message for one of those means the client's own guard was bypassed,
+// and the server's sentence is the more useful thing to show.
 export const SERVER_CODE_KEYS = {
     EXPENSE_IS_SHARED: 'server.expenseIsShared',
     GROUP_NOT_FOUND: 'server.groupNotFound',
     GROUP_ARCHIVED: 'server.groupArchived',
+    GROUP_HAS_HISTORY: 'server.groupHasHistory',
+    DUPLICATE_GROUP_NAME: 'server.duplicateGroupName',
+    MEMBER_NOT_FOUND: 'server.memberNotFound',
+    DUPLICATE_MEMBER_NAME: 'server.duplicateMemberName',
+    SELF_MEMBER_PROTECTED: 'server.selfMemberProtected',
+    MEMBER_HAS_HISTORY: 'server.memberHasHistory',
+    READ_ONLY_FIELD: 'server.readOnlyField',
+    INVALID_COLOR: 'server.invalidColor',
 };
 
 export const serverCodeKey = (code) =>
