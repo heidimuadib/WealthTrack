@@ -22,6 +22,14 @@ const {
     updateExpense,
     deleteExpense,
 } = require('../controllers/sharedExpense.controller');
+const {
+    getBalances,
+    listSettlements,
+    getSettlement,
+    createSettlement,
+    updateSettlement,
+    deleteSettlement,
+} = require('../controllers/settlement.controller');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -57,5 +65,20 @@ router.post('/:groupId/expenses', createExpense);
 router.get('/:groupId/expenses/:expenseId', getExpense);
 router.put('/:groupId/expenses/:expenseId', updateExpense);
 router.delete('/:groupId/expenses/:expenseId', deleteExpense);
+
+// Repayments, and the balances derived from them.
+//
+// Balances are their own endpoint rather than a field on the group. Group
+// detail stays metadata and members; expenses, settlements and balances are
+// each fetched and cached on their own, so recording a repayment invalidates
+// the two things it actually changed rather than a single nested response
+// carrying the whole trip.
+router.get('/:groupId/balances', getBalances);
+
+router.get('/:groupId/settlements', listSettlements);
+router.post('/:groupId/settlements', createSettlement);
+router.get('/:groupId/settlements/:settlementId', getSettlement);
+router.put('/:groupId/settlements/:settlementId', updateSettlement);
+router.delete('/:groupId/settlements/:settlementId', deleteSettlement);
 
 module.exports = router;
