@@ -12,6 +12,7 @@ import {
     Settings as SettingsIcon,
     Receipt,
     SearchX,
+    Users,
 } from 'lucide-react-native';
 
 import Input from '../components/Input';
@@ -23,6 +24,7 @@ import { queryKeys } from '../lib/queryKeys';
 import { searchExpenses, searchCategories, searchActions } from '../utils/search';
 import { formatCurrency, formatDayLabel, formatMonthYear } from '../utils/format';
 import haptics from '../services/haptics';
+import { expenseRoute } from '../utils/sharedExpense';
 
 // Searches what the app already has, and says so.
 //
@@ -47,6 +49,7 @@ const ACTIONS = [
     { key: 'categories', icon: Tag, labelKey: 'search.actionCategories', keywordsKey: 'search.keywordsCategories' },
     { key: 'profile', icon: UserCog, labelKey: 'search.actionProfile', keywordsKey: 'search.keywordsProfile' },
     { key: 'settings', icon: SettingsIcon, labelKey: 'search.actionSettings', keywordsKey: 'search.keywordsSettings' },
+    { key: 'groups', icon: Users, labelKey: 'search.actionGroups', keywordsKey: 'search.keywordsGroups' },
 ];
 
 // Tabs live inside the navigator this screen was pushed above, so reaching one
@@ -60,6 +63,7 @@ const DESTINATIONS = {
     reports: ['Reports'],
     categories: ['Categories'],
     profile: ['EditProfile'],
+    groups: ['Groups'],
 };
 
 const GlobalSearchScreen = ({ navigation }) => {
@@ -155,7 +159,7 @@ const GlobalSearchScreen = ({ navigation }) => {
     );
 
     const openExpense = useCallback(
-        (expense) => go(() => navigation.navigate('EditExpense', { expense })),
+        (expense) => go(() => navigation.navigate(...expenseRoute(expense))),
         [go, navigation]
     );
 

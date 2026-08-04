@@ -18,6 +18,16 @@ import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import GlobalSearchScreen from '../screens/GlobalSearchScreen';
+import GroupsScreen from '../screens/groups/GroupsScreen';
+import CreateGroupScreen from '../screens/groups/CreateGroupScreen';
+import EditGroupScreen from '../screens/groups/EditGroupScreen';
+import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
+import ManageGroupMembersScreen from '../screens/groups/ManageGroupMembersScreen';
+import AddSharedExpenseScreen from '../screens/groups/AddSharedExpenseScreen';
+import EditSharedExpenseScreen from '../screens/groups/EditSharedExpenseScreen';
+import SharedExpenseDetailScreen from '../screens/groups/SharedExpenseDetailScreen';
+import RecordSettlementScreen from '../screens/groups/RecordSettlementScreen';
+import EditSettlementScreen from '../screens/groups/EditSettlementScreen';
 import BrandMark from '../components/BrandMark';
 
 import { radius, spacing, useTheme } from '../theme';
@@ -175,6 +185,47 @@ const AppNavigator = () => {
                             push, so tapping the header twice cannot stack two
                             search screens on top of each other. */}
                         <Stack.Screen name="Search" component={GlobalSearchScreen} />
+
+                        {/* Groups. A stack rather than a sixth tab: the bar is
+                            full at five, and the middle slot is an add button
+                            rather than a destination. Reports and Categories
+                            already live here for the same reason.
+
+                            Route params, so the screens that replace these
+                            shells inherit them:
+                              Groups                — none
+                              CreateGroup           — none
+                              EditGroup             — { groupId }
+                              GroupDetail           — { groupId }
+                              ManageGroupMembers    — { groupId }
+                              AddSharedExpense      — { groupId }
+                              EditSharedExpense     — { groupId, sharedExpenseId }
+                              SharedExpenseDetail   — { groupId, sharedExpenseId }
+                              RecordSettlement      — { groupId, fromMemberId?, toMemberId? }
+                              EditSettlement        — { groupId, settlementId }
+
+                            Ids only. Names, notes and amounts are loaded on the
+                            screen from the id, so nothing carrying somebody's
+                            finances ends up in a navigation breadcrumb. */}
+                        <Stack.Screen name="Groups" component={GroupsScreen} />
+                        <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+                        <Stack.Screen name="EditGroup" component={EditGroupScreen} />
+                        <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+                        <Stack.Screen
+                            name="ManageGroupMembers"
+                            component={ManageGroupMembersScreen}
+                        />
+                        <Stack.Screen name="AddSharedExpense" component={AddSharedExpenseScreen} />
+                        <Stack.Screen
+                            name="EditSharedExpense"
+                            component={EditSharedExpenseScreen}
+                        />
+                        <Stack.Screen
+                            name="SharedExpenseDetail"
+                            component={SharedExpenseDetailScreen}
+                        />
+                        <Stack.Screen name="RecordSettlement" component={RecordSettlementScreen} />
+                        <Stack.Screen name="EditSettlement" component={EditSettlementScreen} />
                     </>
                 ) : (
                     <>

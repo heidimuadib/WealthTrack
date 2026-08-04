@@ -12,6 +12,7 @@ import {
     ShieldCheck,
     Trash2,
     KeyRound,
+    Users,
 } from 'lucide-react-native';
 
 import Card from '../components/Card';
@@ -106,6 +107,27 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={styles.rowMain}>
                             <Text style={styles.rowTitle}>{t('settings.reports')}</Text>
                             <Text style={styles.rowMeta}>{t('settings.reportsMeta')}</Text>
+                        </View>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                    </TouchableOpacity>
+
+                    {/* Beside Reports and Categories, which is where the other
+                        things that have their own screen rather than their own
+                        tab already live. */}
+                    <TouchableOpacity
+                        style={[styles.row, styles.rowDivider]}
+                        onPress={() => navigation.navigate('Groups')}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('settings.groups')}
+                        accessibilityHint={t('settings.groupsMeta')}
+                    >
+                        <View style={styles.rowIcon}>
+                            <Users color={colors.brand} size={18} />
+                        </View>
+                        <View style={styles.rowMain}>
+                            <Text style={styles.rowTitle}>{t('settings.groups')}</Text>
+                            <Text style={styles.rowMeta}>{t('settings.groupsMeta')}</Text>
                         </View>
                         <ChevronRight color={colors.textMuted} size={18} />
                     </TouchableOpacity>

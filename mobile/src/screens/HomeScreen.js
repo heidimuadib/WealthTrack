@@ -18,10 +18,12 @@ import ErrorBanner from '../components/ErrorBanner';
 import MonthSelector from '../components/MonthSelector';
 import SpendSummaryCard from '../components/SpendSummaryCard';
 import BudgetPromptCard from '../components/BudgetPromptCard';
+import GroupsCard from '../components/GroupsCard';
 import { DashboardSkeleton } from '../components/ScreenSkeletons';
 import { radius, spacing, useTheme } from '../theme';
 import { useLanguage } from '../i18n';
 import { useExpenses } from '../hooks/useExpenses';
+import { isSharedMirror, expenseRoute } from '../utils/sharedExpense';
 import { useBudget } from '../hooks/useBudget';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import useAuthStore from '../store/authStore';
@@ -269,6 +271,15 @@ const HomeScreen = ({ navigation }) => {
                 />
             ) : null}
 
+            {/* Below the month's own figures, above the breakdown: a way into
+                something adjacent to this screen's subject rather than part
+                of it. One request, and no balance it would have to invent. */}
+            <GroupsCard
+                onPress={() => navigation.navigate('Groups')}
+                onCreate={() => navigation.navigate('CreateGroup')}
+                style={styles.groupsCard}
+            />
+
             <Text style={styles.sectionTitle}>{t('home.breakdown')}</Text>
             <Card>
                 {breakdown.length === 0 ? (
@@ -330,7 +341,10 @@ const HomeScreen = ({ navigation }) => {
                         <TouchableOpacity
                             key={expense.id}
                             style={[styles.row, index > 0 && styles.rowDivider]}
-                            onPress={() => navigation.navigate('EditExpense', { expense })}
+                            onPress={() => navigation.navigate(...expenseRoute(expense))}
+                            accessibilityHint={
+                                isSharedMirror(expense) ? t('expenses.sharedA11y') : undefined
+                            }
                             activeOpacity={0.7}
                         >
                             <View
@@ -431,6 +445,9 @@ const createStyles = ({ colors, typography }) =>
     prompt: {
         marginTop: spacing.l,
         marginBottom: 0,
+    },
+    groupsCard: {
+        marginTop: spacing.l,
     },
     sectionTitle: {
         ...typography.h2,
