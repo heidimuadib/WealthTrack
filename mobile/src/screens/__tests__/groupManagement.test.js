@@ -423,24 +423,23 @@ describe('group detail', () => {
         expect(texts(tree)).toContain('John');
     });
 
-    it('shows no financial figures yet', async () => {
+    it('still shows no balance', async () => {
         const tree = await screen();
         const shown = texts(tree).join(' ');
 
-        expect(shown).not.toMatch(/₱|owed|owe\b/i);
-        expect(shown).toContain(EN['groups.expensesComing']);
+        // Expenses arrived with the editor; who owes whom did not. A figure
+        // here would be one no endpoint this screen calls actually returns.
+        expect(shown).not.toMatch(/owed|owes|settle/i);
     });
 
-    it('offers no add-expense action while the editor does not exist', async () => {
+    it('offers the add-expense action now that the editor exists', async () => {
         const tree = await screen();
+        expect(texts(tree)).toContain(EN['shared.add']);
+    });
 
-        // An action opening a form that is not built yet is a promise the app
-        // cannot keep. It arrives with the editor.
-        expect(texts(tree)).not.toContain(EN['groups.routeAddExpense']);
-        expect(navigation.navigate).not.toHaveBeenCalledWith(
-            'AddSharedExpense',
-            expect.anything()
-        );
+    it('withholds it on an archived group', async () => {
+        const tree = await screen({ archivedAt: '2026-08-01T00:00:00.000Z' });
+        expect(texts(tree)).not.toContain(EN['shared.add']);
     });
 
     it('opens member management', async () => {
@@ -652,7 +651,13 @@ describe('localization', () => {
             path.join(SRC, '..', '..', 'backend', 'src', 'controllers', 'expense.controller.js'),
             'utf8'
         );
-        const source = backend + member + access + validation + expense;
+        const sharedExpense = fs.readFileSync(
+            path.join(
+                SRC, '..', '..', 'backend', 'src', 'controllers', 'sharedExpense.controller.js'
+            ),
+            'utf8'
+        );
+        const source = backend + member + access + validation + expense + sharedExpense;
 
         // A code the server never sends is a translation nobody ever sees.
         Object.keys(SERVER_CODE_KEYS).forEach((code) =>
