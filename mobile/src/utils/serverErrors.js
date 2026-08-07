@@ -104,6 +104,22 @@ export const SERVER_CODE_KEYS = {
     MEMBER_HAS_HISTORY: 'server.memberHasHistory',
     READ_ONLY_FIELD: 'server.readOnlyField',
     INVALID_COLOR: 'server.invalidColor',
+
+    // Shared expenses. INVALID_SPLIT is deliberately absent: the server's own
+    // sentence there names both figures — "Shares add up to ₱495.00, but the
+    // total is ₱500.00" — and a fixed translation could not, so the prose
+    // fallback is the more useful answer.
+    INVALID_AMOUNT: 'server.invalidAmount',
+    INVALID_DATE: 'server.invalidDate',
+    INVALID_SPLIT_METHOD: 'server.invalidSplitMethod',
+    PAYER_REQUIRED: 'server.payerRequired',
+    PAYER_NOT_IN_GROUP: 'server.payerNotInGroup',
+    PAYER_ARCHIVED: 'server.payerArchived',
+    PARTICIPANTS_REQUIRED: 'server.participantsRequired',
+    PARTICIPANT_NOT_IN_GROUP: 'server.participantNotInGroup',
+    PARTICIPANT_ARCHIVED: 'server.participantArchived',
+    CATEGORY_NOT_FOUND: 'server.categoryNotFound',
+    EXPENSE_NOT_FOUND: 'server.expenseNotFound',
 };
 
 export const serverCodeKey = (code) =>

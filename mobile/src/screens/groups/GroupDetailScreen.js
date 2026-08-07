@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { Users, Pencil, Archive, ChevronRight, Receipt } from 'lucide-react-native';
+import { Users, Pencil, Archive, ChevronRight, Receipt, Plus } from 'lucide-react-native';
 
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -11,9 +11,10 @@ import { useFeedback } from '../../components/FeedbackProvider';
 import { resolveViewState, LOADING, ERROR } from '../../utils/viewState';
 import { errorMessage } from '../../utils/error';
 import haptics from '../../services/haptics';
+import { formatCurrency, formatDayLabel } from '../../utils/format';
 import { radius, spacing, useTheme } from '../../theme';
 import { useLanguage } from '../../i18n';
-import { useGroup, useUnarchiveGroup } from '../../hooks/useGroups';
+import { useGroup, useGroupExpenses, useUnarchiveGroup } from '../../hooks/useGroups';
 
 // Route params: { groupId }
 
@@ -29,7 +30,9 @@ const GroupDetailScreen = ({ navigation, route }) => {
 
     const groupId = route.params?.groupId;
     const query = useGroup(groupId);
+    const expensesQuery = useGroupExpenses(groupId);
     const group = query.data;
+    const expenses = expensesQuery.data ?? [];
     const unarchiveGroup = useUnarchiveGroup();
 
     const state = resolveViewState({
@@ -41,6 +44,8 @@ const GroupDetailScreen = ({ navigation, route }) => {
     const archived = Boolean(group?.archivedAt);
     const members = group?.members ?? [];
     const activeMembers = members.filter((member) => !member.archivedAt);
+
+    const nameOf = (memberId) => members.find((m) => m.id === memberId)?.name ?? '';
 
     const memberLabel = (count) =>
         count === 1 ? t('groups.memberOne') : t('groups.memberMany', { count });
@@ -178,21 +183,101 @@ const GroupDetailScreen = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle} accessibilityRole="header">
                     {t('groups.expensesTitle')}
                 </Text>
-                <Card>
-                    {/* One honest sentence rather than an empty list with an
-                        add button that opens a form which does not exist yet.
-                        The editor arrives in the next phase, and until it does
-                        an "Add shared expense" action here would be a promise
-                        the app cannot keep. */}
-                    <View style={styles.future}>
-                        <Receipt
-                            color={colors.textMuted}
-                            size={18}
-                            importantForAccessibility="no-hide-descendants"
-                        />
-                        <Text style={styles.futureText}>{t('groups.expensesComing')}</Text>
-                    </View>
+                <Card padded={false}>
+                    {expensesQuery.isPending ? (
+                        <View style={styles.future}>
+                            <View style={[styles.ghost, styles.ghostWide]} />
+                            <View style={[styles.ghost, styles.ghostNarrow]} />
+                        </View>
+                    ) : expensesQuery.error ? (
+                        <View style={styles.future}>
+                            <Text style={styles.futureText}>{t('shared.loadFailed')}</Text>
+                            <Button
+                                title={t('errors.tryAgain')}
+                                onPress={expensesQuery.refetch}
+                                variant="secondary"
+                                size="small"
+                            />
+                        </View>
+                    ) : expenses.length === 0 ? (
+                        <View style={styles.future}>
+                            <Receipt
+                                color={colors.textMuted}
+                                size={18}
+                                importantForAccessibility="no-hide-descendants"
+                            />
+                            <Text style={styles.futureText}>
+                                {archived ? t('shared.emptyArchived') : t('shared.emptyMsg')}
+                            </Text>
+                        </View>
+                    ) : (
+                        // Newest first, straight from the one list request the
+                        // group already made. Names come from the members
+                        // loaded alongside, so no row costs a request.
+                        expenses.map((expense, index) => {
+                            const payer = nameOf(expense.payerMemberId);
+                            const amount = formatCurrency(expense.amount);
+
+                            return (
+                                <TouchableOpacity
+                                    key={expense.id}
+                                    style={[styles.expenseRow, index > 0 && styles.rowDivider]}
+                                    onPress={() =>
+                                        navigation.navigate('SharedExpenseDetail', {
+                                            groupId,
+                                            sharedExpenseId: expense.id,
+                                        })
+                                    }
+                                    activeOpacity={0.7}
+                                    accessible
+                                    accessibilityRole="button"
+                                    accessibilityLabel={t('shared.a11yRow', {
+                                        description: expense.description,
+                                        payer: t('shared.paidBy', { name: payer }),
+                                        amount,
+                                    })}
+                                >
+                                    <View style={styles.expenseMain}>
+                                        <View style={styles.expenseTitleLine}>
+                                            <Text style={styles.expenseName} numberOfLines={1}>
+                                                {expense.description}
+                                            </Text>
+                                            {expense.hasPersonalShare ? (
+                                                <View style={styles.shareBadge}>
+                                                    <Text style={styles.shareBadgeText}>
+                                                        {t('shared.yourShareBadge')}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                        <Text style={styles.expenseMeta} numberOfLines={1}>
+                                            {[
+                                                t('shared.paidBy', { name: payer }),
+                                                formatDayLabel(expense.date),
+                                                expense.shares.length === 1
+                                                    ? t('shared.participantsOne')
+                                                    : t('shared.participantsMany', {
+                                                          count: expense.shares.length,
+                                                      }),
+                                            ].join(' · ')}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.expenseAmount}>{amount}</Text>
+                                </TouchableOpacity>
+                            );
+                        })
+                    )}
                 </Card>
+
+                {/* Absent on an archived group: nothing may be added to one. */}
+                {archived ? null : (
+                    <Button
+                        title={t('shared.add')}
+                        onPress={() => navigation.navigate('AddSharedExpense', { groupId })}
+                        icon={<Plus color={colors.onBrand} size={17} />}
+                        style={styles.addExpense}
+                    />
+                )}
 
                 <View style={styles.actions}>
                     {archived ? (
@@ -317,6 +402,61 @@ const createStyles = ({ colors, typography }) =>
         future: {
             flexDirection: 'row',
             alignItems: 'center',
+            padding: spacing.l,
+        },
+        ghost: {
+            height: 12,
+            borderRadius: radius.s,
+            backgroundColor: colors.borderStrong,
+            opacity: 0.5,
+        },
+        ghostWide: { width: '45%' },
+        ghostNarrow: { width: '25%', marginLeft: spacing.m },
+        expenseRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            minHeight: 56,
+            paddingHorizontal: spacing.l,
+            paddingVertical: spacing.m,
+        },
+        rowDivider: {
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+        },
+        expenseMain: { flex: 1 },
+        expenseTitleLine: { flexDirection: 'row', alignItems: 'center' },
+        expenseName: {
+            flexShrink: 1,
+            fontSize: 15,
+            fontWeight: '500',
+            color: colors.textPrimary,
+        },
+        shareBadge: {
+            marginLeft: spacing.s,
+            paddingHorizontal: spacing.s,
+            paddingVertical: 2,
+            borderRadius: radius.round,
+            backgroundColor: colors.brandTint,
+        },
+        shareBadgeText: {
+            fontSize: 10,
+            fontWeight: '700',
+            color: colors.brand,
+        },
+        expenseMeta: {
+            fontSize: 12,
+            color: colors.textMuted,
+            marginTop: 2,
+        },
+        expenseAmount: {
+            marginLeft: spacing.m,
+            fontSize: 15,
+            fontWeight: '600',
+            color: colors.textPrimary,
+            fontVariant: ['tabular-nums'],
+        },
+        addExpense: {
+            marginTop: spacing.m,
         },
         futureText: {
             ...typography.caption,
