@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Users, Pencil, Archive, ChevronRight, Receipt, Plus } from 'lucide-react-native';
 
@@ -6,6 +6,7 @@ import Card from '../../components/Card';
 import Button from '../../components/Button';
 import ErrorState from '../../components/ErrorState';
 import ScreenHeader from '../../components/ScreenHeader';
+import GroupBalances from '../../components/GroupBalances';
 import { GroupListSkeleton } from '../../components/ScreenSkeletons';
 import { useFeedback } from '../../components/FeedbackProvider';
 import { resolveViewState, LOADING, ERROR } from '../../utils/viewState';
@@ -14,7 +15,12 @@ import haptics from '../../services/haptics';
 import { formatCurrency, formatDayLabel } from '../../utils/format';
 import { radius, spacing, useTheme } from '../../theme';
 import { useLanguage } from '../../i18n';
-import { useGroup, useGroupExpenses, useUnarchiveGroup } from '../../hooks/useGroups';
+import {
+    useGroup,
+    useGroupBalances,
+    useGroupExpenses,
+    useUnarchiveGroup,
+} from '../../hooks/useGroups';
 
 // Route params: { groupId }
 
@@ -31,6 +37,10 @@ const GroupDetailScreen = ({ navigation, route }) => {
     const groupId = route.params?.groupId;
     const query = useGroup(groupId);
     const expensesQuery = useGroupExpenses(groupId);
+    // One request for the whole section. Every figure and every pair the screen
+    // shows comes out of this single response — nothing is fetched per member
+    // and nothing per pair.
+    const balancesQuery = useGroupBalances(groupId);
     const group = query.data;
     const expenses = expensesQuery.data ?? [];
     const unarchiveGroup = useUnarchiveGroup();
@@ -49,6 +59,14 @@ const GroupDetailScreen = ({ navigation, route }) => {
 
     const memberLabel = (count) =>
         count === 1 ? t('groups.memberOne') : t('groups.memberMany', { count });
+
+    // Stable across renders so the refresh control does not get a new callback
+    // on every keystroke elsewhere on the screen.
+    const refreshAll = useCallback(() => {
+        query.refetch();
+        expensesQuery.refetch();
+        balancesQuery.refetch();
+    }, [query, expensesQuery, balancesQuery]);
 
     const handleUnarchive = async () => {
         if (unarchiveGroup.isPending) {
@@ -116,7 +134,11 @@ const GroupDetailScreen = ({ navigation, route }) => {
                 refreshControl={
                     <RefreshControl
                         refreshing={query.isRefetching}
-                        onRefresh={query.refetch}
+                        // The three things this screen actually shows, and
+                        // nothing else: no other group is touched, and the
+                        // settlements list is not fetched here because no part
+                        // of this screen reads it yet.
+                        onRefresh={refreshAll}
                         tintColor={colors.brand}
                     />
                 }
@@ -150,6 +172,20 @@ const GroupDetailScreen = ({ navigation, route }) => {
                         </View>
                     ) : null}
                 </Card>
+
+                {/* Directly under the group's identity and above everything
+                    else: what somebody opens a group to find out is whether
+                    they are up or down, not what was ordered on Tuesday.
+                    `expensesAreKnownEmpty` is what lets the section tell "no
+                    one owes anyone" apart from "nothing has been spent yet",
+                    and it costs no request — the list is already here. */}
+                <GroupBalances
+                    query={balancesQuery}
+                    archived={archived}
+                    expensesAreKnownEmpty={
+                        expensesQuery.data !== undefined && expenses.length === 0
+                    }
+                />
 
                 <Text style={styles.sectionTitle} accessibilityRole="header">
                     {t('groups.membersTitle')}
