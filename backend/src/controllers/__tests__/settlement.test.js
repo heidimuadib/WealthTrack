@@ -295,6 +295,182 @@ describe('balances — other shapes', () => {
     });
 });
 
+// youAreOwed and youOwe are two gross positions, not two halves of one net.
+//
+// They used to be max(net, 0) and max(-net, 0), so at most one of them could
+// ever be non-zero: somebody owed ₱500 by John while owing Anne ₱300 was told
+// "you are owed ₱200, you owe ₱0" — a pair of figures matching no debt either
+// of them had, sitting directly above the two rows that said otherwise. Both
+// are now added up from those rows.
+describe('balances — gross owed and owing', () => {
+    const cents = (peso) => Math.round(peso * 100);
+
+    // Paul pays for John and eats none of it, so the whole bill is John's debt.
+    const johnOwesPaul = (amount = '500') =>
+        addExpense({ amount, participants: [{ memberId: named.John }] });
+
+    // The same the other way round: Anne pays, Paul is the only participant.
+    const paulOwesAnne = (amount = '300') =>
+        addExpense({
+            amount,
+            payerMemberId: named.Anne,
+            participants: [{ memberId: named.Paul }],
+        });
+
+    it('reports what is owed when nothing is owing', async () => {
+        await johnOwesPaul();
+
+        const res = await balances();
+        expect(res.body.youAreOwed).toBe(500);
+        expect(res.body.youOwe).toBe(0);
+        expect(res.body.netBalance).toBe(500);
+    });
+
+    it('reports what is owing when nothing is owed', async () => {
+        await paulOwesAnne();
+
+        const res = await balances();
+        expect(res.body.youAreOwed).toBe(0);
+        expect(res.body.youOwe).toBe(300);
+        expect(res.body.netBalance).toBe(-300);
+    });
+
+    it('reports both directions rather than their difference', async () => {
+        await johnOwesPaul();
+        await paulOwesAnne();
+
+        const res = await balances();
+        expect(res.body.youAreOwed).toBe(500);
+        expect(res.body.youOwe).toBe(300);
+        expect(res.body.netBalance).toBe(200);
+    });
+
+    it('comes back to zero on both sides once everything is repaid', async () => {
+        await johnOwesPaul();
+        await paulOwesAnne();
+        await pay(named.John, named.Paul, '500');
+        await pay(named.Paul, named.Anne, '300');
+
+        const res = await balances();
+        expect(res.body.pairs).toHaveLength(0);
+        expect(res.body.youAreOwed).toBe(0);
+        expect(res.body.youOwe).toBe(0);
+        expect(res.body.netBalance).toBe(0);
+    });
+
+    it('leaves a debt between two other people out of both totals', async () => {
+        await addExpense({
+            amount: '250',
+            payerMemberId: named.Mike,
+            participants: [{ memberId: named.John }],
+        });
+
+        const res = await balances();
+        expect(pairBetween(res.body, named.John, named.Mike).balance).toBe(250);
+        expect(res.body.youAreOwed).toBe(0);
+        expect(res.body.youOwe).toBe(0);
+        expect(res.body.netBalance).toBe(0);
+    });
+
+    it('keeps youAreOwed - youOwe equal to netBalance', async () => {
+        // Deliberately tangled: debts both ways, a bill everybody is on, and a
+        // partial repayment in each direction.
+        await johnOwesPaul();
+        await paulOwesAnne();
+        await addExpense();
+        await pay(named.Mike, named.Paul, '40');
+        await pay(named.Paul, named.Anne, '75.50');
+
+        const res = await balances();
+
+        // John 600 + Mike 60 + Carl 100 owed to Paul; Paul owes Anne 124.50.
+        expect(res.body.youAreOwed).toBe(760);
+        expect(res.body.youOwe).toBe(124.5);
+        expect(res.body.netBalance).toBe(635.5);
+        expect(cents(res.body.youAreOwed) - cents(res.body.youOwe)).toBe(
+            cents(res.body.netBalance)
+        );
+        // The same net the balance engine reports for Paul's own member row,
+        // arrived at by a different route.
+        expect(memberBalance(res.body, named.Paul).netBalance).toBe(res.body.netBalance);
+    });
+
+    it('adds up to exactly what the pair rows say', async () => {
+        await johnOwesPaul();
+        await paulOwesAnne();
+
+        const res = await balances();
+        const sumWhere = (matches) =>
+            res.body.pairs
+                .filter((pair) => matches(pair.direction))
+                .reduce((total, pair) => total + cents(pair.balance), 0);
+
+        expect(cents(res.body.youAreOwed)).toBe(
+            sumWhere((d) => d.toMemberId === res.body.currentUserMemberId)
+        );
+        expect(cents(res.body.youOwe)).toBe(
+            sumWhere((d) => d.fromMemberId === res.body.currentUserMemberId)
+        );
+    });
+
+    it('leaves the pair rows themselves untouched', async () => {
+        await johnOwesPaul();
+        await paulOwesAnne();
+
+        const res = await balances();
+        expect(res.body.pairs).toHaveLength(2);
+
+        const owedToPaul = pairBetween(res.body, named.John, named.Paul);
+        expect(Object.keys(owedToPaul).sort()).toEqual([
+            'balance',
+            'direction',
+            'memberAId',
+            'memberAName',
+            'memberBId',
+            'memberBName',
+        ]);
+        expect(owedToPaul.balance).toBe(500);
+        expect(owedToPaul.direction).toEqual({
+            fromMemberId: named.John,
+            toMemberId: named.Paul,
+        });
+
+        const owedToAnne = pairBetween(res.body, named.Paul, named.Anne);
+        expect(owedToAnne.balance).toBe(300);
+        expect(owedToAnne.direction).toEqual({
+            fromMemberId: named.Paul,
+            toMemberId: named.Anne,
+        });
+    });
+
+    it('keeps the response shape the mobile client already reads', async () => {
+        await johnOwesPaul();
+        await paulOwesAnne();
+
+        const res = await balances();
+        expect(Object.keys(res.body).sort()).toEqual([
+            'currentUserMemberId',
+            'groupId',
+            'members',
+            'netBalance',
+            'pairs',
+            'youAreOwed',
+            'youOwe',
+        ]);
+        expect(Object.keys(memberBalance(res.body, named.Paul)).sort()).toEqual([
+            'archivedAt',
+            'isCurrentUser',
+            'memberId',
+            'name',
+            'netBalance',
+            'owed',
+            'paid',
+            'received',
+            'sentOut',
+        ]);
+    });
+});
+
 describe('recording a repayment', () => {
     beforeEach(() => addExpense());
 

@@ -86,26 +86,65 @@ const buildBalances = (ledger, options = {}) => {
     return { members, pairs };
 };
 
-// Which way a pair's debt runs, said out loud. The canonical row keeps the two
-// ids in sorted order so a pair is stored once and never twice; the sign says
-// who owes whom, and leaving a client to work that out from a negative number
-// is how a screen ends up rendering "Paul owes John -₱100".
-const describePair = (pair, nameOf) => {
+// Which way a pair's debt runs, read out of the sign exactly once.
+//
+// The canonical row keeps the two ids in sorted order so a pair is stored once
+// and never twice; the sign says who owes whom. Everything downstream — the
+// pair rows in the response and the reader's own totals — asks this function
+// instead of looking at the sign again, because a second reading is a second
+// chance to get it backwards.
+const directionOf = (pair) => {
     const aOwesB = pair.balanceCentavos > 0;
+
+    return {
+        fromMemberId: aOwesB ? pair.memberAId : pair.memberBId,
+        toMemberId: aOwesB ? pair.memberBId : pair.memberAId,
+        // Always positive. The direction carries the meaning.
+        amountCentavos: Math.abs(pair.balanceCentavos),
+    };
+};
+
+// A pair, said out loud. Leaving a client to work the direction out from a
+// negative number is how a screen ends up rendering "Paul owes John -₱100".
+const describePair = (pair, nameOf) => {
+    const { fromMemberId, toMemberId, amountCentavos } = directionOf(pair);
 
     return {
         memberAId: pair.memberAId,
         memberAName: nameOf(pair.memberAId),
         memberBId: pair.memberBId,
         memberBName: nameOf(pair.memberBId),
-        // Always positive. The direction below carries the meaning.
-        balance: toPeso(Math.abs(pair.balanceCentavos)),
-        direction: {
-            fromMemberId: aOwesB ? pair.memberAId : pair.memberBId,
-            toMemberId: aOwesB ? pair.memberBId : pair.memberAId,
-        },
+        balance: toPeso(amountCentavos),
+        direction: { fromMemberId, toMemberId },
     };
 };
+
+// What one member is owed and what they owe, as two independent gross figures.
+//
+// These are not two halves of the net. Somebody owed ₱500 by John while owing
+// Anne ₱300 nets ₱200, and reporting that as "you are owed ₱200, you owe ₱0"
+// erases both real debts behind their difference — the summary would then
+// disagree with the pair rows sitting directly beneath it, which are the rows
+// the reader settles one at a time. Both figures are added up from those same
+// pair rows, so the two cannot drift apart.
+//
+// Third-party debts are skipped rather than netted in: what John owes Mike is
+// not money this member is owed, and it is not money they owe.
+const grossPositionsFor = (pairs, memberId) =>
+    pairs.reduce(
+        (totals, pair) => {
+            const { fromMemberId, toMemberId, amountCentavos } = directionOf(pair);
+
+            if (toMemberId === memberId) {
+                totals.owedCentavos += amountCentavos;
+            } else if (fromMemberId === memberId) {
+                totals.owingCentavos += amountCentavos;
+            }
+
+            return totals;
+        },
+        { owedCentavos: 0, owingCentavos: 0 }
+    );
 
 // Everything GET /balances answers, ready to serialise.
 const groupBalanceView = async (client, group) => {
@@ -114,15 +153,19 @@ const groupBalanceView = async (client, group) => {
 
     const nameOf = (id) => ledger.members.find((member) => member.id === id)?.name ?? null;
     const self = members.find((entry) => entry.member.isCurrentUser);
+    const selfMemberId = self?.member.id ?? null;
     const selfNet = self?.netCentavos ?? 0;
+    const { owedCentavos, owingCentavos } = grossPositionsFor(pairs, selfMemberId);
 
     return {
         groupId: group.id,
-        currentUserMemberId: self?.member.id ?? null,
-        // Split into two non-negative figures because a screen shows them in
-        // different places and different colours; netBalance keeps the sign.
-        youAreOwed: toPeso(Math.max(selfNet, 0)),
-        youOwe: toPeso(Math.max(-selfNet, 0)),
+        currentUserMemberId: selfMemberId,
+        // Two gross positions, both non-negative, and either or both can be
+        // non-zero at once. netBalance is still the member's own net from the
+        // balance engine rather than the difference computed here — the two
+        // routes to it must agree, and the tests assert that they do.
+        youAreOwed: toPeso(owedCentavos),
+        youOwe: toPeso(owingCentavos),
         netBalance: toPeso(selfNet),
         members: members
             .map((entry) => ({
