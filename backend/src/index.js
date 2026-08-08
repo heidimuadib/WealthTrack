@@ -37,6 +37,31 @@ const isProduction = process.env.NODE_ENV === 'production';
 // and sidestep the limiter entirely.
 app.set('trust proxy', 'loopback');
 
+// No ETags on API responses, which means no 304s, which is the whole point.
+//
+// Express adds a weak ETag to every res.json by default. Android's OkHttp keeps
+// an HTTP cache and will happily revalidate with If-None-Match, so a refetch of
+// something that has not changed comes back 304 with an empty body. Axios then
+// rejects it: its default validateStatus accepts 200-299 only, so a 304 arrives
+// at the app as `Request failed with status code 304`, react-query stores that
+// as the query's error, and a screen that renders an error state shows one —
+// while holding perfectly good cached data it was about to redisplay.
+//
+// That is what put "Could not load the shared expenses" on the group screen
+// after saving a bill: the save succeeded, the list refetched, nothing else on
+// the screen had changed, and four 304s came back looking like four failures.
+//
+// Widening validateStatus to allow 304 is not the fix — the body really is
+// empty, so the cache would be overwritten with nothing. Conditional requests
+// buy this API almost nothing anyway: the payloads are small, private, and
+// change on exactly the actions that already trigger a refetch.
+//
+// This affects res.json/res.send only. express.static generates its own ETags
+// through the `send` module, which this setting does not reach, so the privacy
+// and reset-password pages keep revalidating as before — a browser handles a
+// 304 correctly, which is the difference that matters.
+app.set('etag', false);
+
 // HSTS is the one header that has to differ by environment. In development the
 // phone reaches this process over plain HTTP on the LAN, and Android's OkHttp
 // honours the header by silently upgrading to HTTPS — nothing is listening
@@ -214,6 +239,12 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong' });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// Listens only when started directly, so a test can require the configured app
+// and bind its own ephemeral port instead of racing this one.
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
+
+module.exports = app;
