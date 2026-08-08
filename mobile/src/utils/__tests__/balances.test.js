@@ -30,11 +30,33 @@ const pair = (one, two, balance, debtor) => {
     };
 };
 
+// The server's own two totals, added up the way the server adds them up: gross
+// positions read off the pair rows, in centavos, direction by direction.
+//
+// They were once max(net, 0) and max(-net, 0), so at most one could be non-zero
+// and neither matched the rows beneath it. No response has looked like that
+// since ebaedf4, and a fixture still shaped that way would let a screen that
+// trusted the server's totals pass here and be wrong in front of somebody.
+const grossTotals = (pairs, selfId) => {
+    const cents = (peso) => Math.round(peso * 100);
+    let owed = 0;
+    let owing = 0;
+
+    pairs.forEach(({ balance, direction }) => {
+        if (direction.toMemberId === selfId) {
+            owed += cents(balance);
+        } else if (direction.fromMemberId === selfId) {
+            owing += cents(balance);
+        }
+    });
+
+    return { youAreOwed: owed / 100, youOwe: owing / 100 };
+};
+
 const view = (pairs, netBalance = 0) => ({
     groupId: 'g-1',
     currentUserMemberId: PAUL.id,
-    youAreOwed: Math.max(netBalance, 0),
-    youOwe: Math.max(-netBalance, 0),
+    ...grossTotals(pairs, PAUL.id),
     netBalance,
     members: [],
     pairs,
@@ -111,14 +133,40 @@ describe('sortPairs', () => {
 });
 
 describe('selfTotals', () => {
-    // The API's own youAreOwed/youOwe are cut from one net figure, so they can
-    // never both be non-zero. Adding up the pairs is what lets the summary
-    // agree with the rows underneath it.
-    it('adds up both sides even though the API nets them to one', () => {
+    // The Phase 6A.1 worked example, asserted against the fixture itself rather
+    // than only through selfTotals: John owes the reader ₱500, the reader owes
+    // Anne ₱300, and the server says all three figures out loud. If this
+    // fixture ever drifts back to netting the two together, this fails here
+    // instead of quietly weakening every test built on top of it.
+    it('is built on a response that reports both directions gross', () => {
         const balances = view([pair(PAUL, JOHN, 500, JOHN), pair(PAUL, ANNE, 300, PAUL)], 200);
 
-        expect(balances.youOwe).toBe(0);
+        expect(balances.youAreOwed).toBe(500);
+        expect(balances.youOwe).toBe(300);
+        expect(balances.netBalance).toBe(200);
+
+        const [owedToPaul, owedToAnne] = balances.pairs;
+        expect(owedToPaul.balance).toBe(500);
+        expect(owedToPaul.direction).toEqual({ fromMemberId: JOHN.id, toMemberId: PAUL.id });
+        expect(owedToAnne.balance).toBe(300);
+        expect(owedToAnne.direction).toEqual({ fromMemberId: PAUL.id, toMemberId: ANNE.id });
+    });
+
+    // Summed here as well as on the server, deliberately: the summary is then
+    // provably the total of the rows displayed beneath it, whatever the server
+    // sent. The two agreeing is asserted immediately below.
+    it('adds up both sides of the reader’s position', () => {
+        const balances = view([pair(PAUL, JOHN, 500, JOHN), pair(PAUL, ANNE, 300, PAUL)], 200);
+
         expect(selfTotals(balances)).toEqual({ owedToYou: 500, youOwe: 300, net: 200 });
+    });
+
+    it('lands on the same two figures the server sent', () => {
+        const balances = view([pair(PAUL, JOHN, 500, JOHN), pair(PAUL, ANNE, 300, PAUL)], 200);
+        const { owedToYou, youOwe } = selfTotals(balances);
+
+        expect(owedToYou).toBe(balances.youAreOwed);
+        expect(youOwe).toBe(balances.youOwe);
     });
 
     it('reconciles with the net the server worked out', () => {

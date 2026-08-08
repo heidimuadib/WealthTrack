@@ -73,13 +73,18 @@ export const sortPairs = (pairs = [], currentUserMemberId = null) =>
 
 // What the reader is owed and what they owe, as two gross figures.
 //
-// The API's own youAreOwed/youOwe cannot answer this: both are cut from one net
-// number — max(net, 0) and max(-net, 0) — so at most one of them is ever
-// non-zero. Somebody who is owed ₱500 by John and owes Anne ₱300 would be told
-// they owe nothing, while the rows immediately below said otherwise. Adding up
-// the pairs the server already decided is what makes the summary agree with the
-// list, and it invents no obligation: every addend is a balance the backend
-// sent, settlements included.
+// The API sends these two as well, and since the backend contract correction
+// they agree with what this works out. Summing here anyway is not distrust of
+// the server — it is what makes the summary provably the total of the rows
+// rendered directly beneath it, so the two cannot disagree on screen whatever
+// arrives. It invents no obligation either: every addend is a balance the
+// backend decided, settlements included.
+//
+// The history is worth keeping: both figures used to be cut from one net
+// number — max(net, 0) and max(-net, 0) — so at most one was ever non-zero, and
+// somebody owed ₱500 by John while owing Anne ₱300 was told they owed nothing
+// above rows that said otherwise. That is the bug this function was written to
+// route around, and it is fixed at the source now.
 //
 // netBalance is still taken from the server verbatim rather than subtracted
 // here. The two must reconcile — owedToYou - youOwe === netBalance — and that

@@ -109,11 +109,28 @@ const pair = (one, two, balance, debtor) => {
     };
 };
 
+// Gross positions summed off the pair rows, as the server now sends them —
+// not max(net, 0) and max(-net, 0), which could never both be non-zero.
+const grossTotals = (pairs, selfId) => {
+    const cents = (peso) => Math.round(peso * 100);
+    let owed = 0;
+    let owing = 0;
+
+    pairs.forEach(({ balance, direction }) => {
+        if (direction.toMemberId === selfId) {
+            owed += cents(balance);
+        } else if (direction.fromMemberId === selfId) {
+            owing += cents(balance);
+        }
+    });
+
+    return { youAreOwed: owed / 100, youOwe: owing / 100 };
+};
+
 const balances = ({ pairs = [], netBalance = 0 } = {}) => ({
     groupId: GROUP_ID,
     currentUserMemberId: PAUL.id,
-    youAreOwed: Math.max(netBalance, 0),
-    youOwe: Math.max(-netBalance, 0),
+    ...grossTotals(pairs, PAUL.id),
     netBalance,
     members: [],
     pairs,

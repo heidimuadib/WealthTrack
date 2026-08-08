@@ -100,13 +100,31 @@ const pair = (one, two, balance, debtor) => {
     };
 };
 
+// The server's two totals, added up the way the server adds them up: gross
+// positions read off the pair rows, direction by direction. They are no longer
+// max(net, 0) and max(-net, 0) — since ebaedf4 both can be non-zero at once.
+const grossTotals = (pairs, selfId) => {
+    const cents = (peso) => Math.round(peso * 100);
+    let owed = 0;
+    let owing = 0;
+
+    pairs.forEach(({ balance, direction }) => {
+        if (direction.toMemberId === selfId) {
+            owed += cents(balance);
+        } else if (direction.fromMemberId === selfId) {
+            owing += cents(balance);
+        }
+    });
+
+    return { youAreOwed: owed / 100, youOwe: owing / 100 };
+};
+
 // Shaped as groupBalanceView() serialises it, netBalance included so the
 // screen never has to work one out.
 const balances = ({ pairs = [], netBalance = 0, currentUserMemberId = PAUL.id } = {}) => ({
     groupId: GROUP_ID,
     currentUserMemberId,
-    youAreOwed: Math.max(netBalance, 0),
-    youOwe: Math.max(-netBalance, 0),
+    ...grossTotals(pairs, currentUserMemberId),
     netBalance,
     members: [],
     pairs,
