@@ -238,7 +238,7 @@ describe('balance summary', () => {
 
         expect(shown).toContain('₱500.00');
         expect(shown).toContain('₱300.00');
-        expect(shown).toContain(EN['balances.net']);
+        expect(shown).toContain(EN['balances.netOwed']);
         expect(shown).toContain('₱200.00');
     });
 
@@ -505,7 +505,7 @@ describe('accessibility', () => {
         expect(shown).toContain(fill('balances.a11yYouOwe', { amount: '₱0.00' }));
     });
 
-    it('announces the net when it is shown', async () => {
+    it('announces a net in the reader’s favour as money owed to them', async () => {
         seed({
             balanceView: balances({
                 pairs: [pair(PAUL, JOHN, 500, JOHN), pair(PAUL, ANNE, 300, PAUL)],
@@ -514,8 +514,45 @@ describe('accessibility', () => {
         });
 
         expect(labels(await screen())).toContain(
-            fill('balances.a11yNet', { amount: '₱200.00' })
+            fill('balances.a11yNetOwed', { amount: '₱200.00' })
         );
+    });
+
+    // The net is the only figure on this screen that can arrive negative, so it
+    // is the only one that could leak a sign into the UI. It has to read the
+    // same way round as every other row: direction in the words, amount always
+    // positive, and nothing announced that the screen does not also show.
+    it('announces a net against the reader as money they owe, with no sign anywhere', async () => {
+        seed({
+            balanceView: balances({
+                pairs: [pair(PAUL, JOHN, 300, JOHN), pair(PAUL, ANNE, 500, PAUL)],
+                netBalance: -200,
+            }),
+        });
+
+        const rendered = await screen();
+
+        expect(labels(rendered)).toContain(
+            fill('balances.a11yNetOwing', { amount: '₱200.00' })
+        );
+        expect(texts(rendered)).toContain(EN['balances.netOwing']);
+        expect(texts(rendered)).toContain('₱200.00');
+        expect(texts(rendered).join(' ')).not.toContain('-₱');
+        expect(labels(rendered).join(' ')).not.toContain('-₱');
+    });
+
+    it('calls a net of zero square rather than showing ₱0.00 with a direction', async () => {
+        seed({
+            balanceView: balances({
+                pairs: [pair(PAUL, JOHN, 300, JOHN), pair(PAUL, ANNE, 300, PAUL)],
+                netBalance: 0,
+            }),
+        });
+
+        const rendered = await screen();
+
+        expect(texts(rendered)).toContain(EN['balances.netEven']);
+        expect(labels(rendered)).toContain(EN['balances.a11yNetEven']);
     });
 
     it('announces an archived group as history only', async () => {

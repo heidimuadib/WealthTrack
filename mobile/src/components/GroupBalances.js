@@ -95,6 +95,18 @@ const PairRow = ({ pair, currentUserMemberId, styles, colors, t, isLast }) => {
     );
 };
 
+// The net is the one figure that can arrive negative, and it gets the same
+// treatment as everything else on this screen: the amount is always absolute
+// and the label always says which way it points. "Net balance -₱200" is the
+// signed accounting number this screen exists to avoid, and a bare "₱200" under
+// a direction-free label is worse — it reads as money in hand to somebody who
+// is actually down that much.
+const NET_COPY = {
+    owed: ['balances.netOwed', 'balances.a11yNetOwed'],
+    owing: ['balances.netOwing', 'balances.a11yNetOwing'],
+    even: ['balances.netEven', 'balances.a11yNetEven'],
+};
+
 const GroupBalances = ({ query, archived = false, expensesAreKnownEmpty = false }) => {
     const theme = useTheme();
     const { colors } = theme;
@@ -126,6 +138,10 @@ const GroupBalances = ({ query, archived = false, expensesAreKnownEmpty = false 
         () => summaryState(balances, { expensesAreKnownEmpty }),
         [balances, expensesAreKnownEmpty]
     );
+
+    const [netLabelKey, netA11yKey] =
+        NET_COPY[totals.net > 0 ? 'owed' : totals.net < 0 ? 'owing' : 'even'];
+    const netAmount = formatCurrency(Math.abs(totals.net));
 
     const heading = (
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -247,14 +263,10 @@ const GroupBalances = ({ query, archived = false, expensesAreKnownEmpty = false 
                             <View
                                 style={styles.net}
                                 accessible
-                                accessibilityLabel={t('balances.a11yNet', {
-                                    amount: formatCurrency(totals.net),
-                                })}
+                                accessibilityLabel={t(netA11yKey, { amount: netAmount })}
                             >
-                                <Text style={styles.netLabel}>{t('balances.net')}</Text>
-                                <Text style={styles.netAmount}>
-                                    {formatCurrency(Math.abs(totals.net))}
-                                </Text>
+                                <Text style={styles.netLabel}>{t(netLabelKey)}</Text>
+                                <Text style={styles.netAmount}>{netAmount}</Text>
                             </View>
                         ) : null}
                     </View>
