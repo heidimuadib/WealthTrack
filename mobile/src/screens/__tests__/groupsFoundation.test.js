@@ -342,7 +342,6 @@ describe('localization', () => {
     it('hardcodes no user-facing English in the new files', () => {
         const files = [
             ['components', 'GroupsCard.js'],
-            ['screens', 'groups', 'GroupRouteShell.js'],
             ['screens', 'groups', 'GroupsScreen.js'],
             ['services', 'groups.js'],
             ['hooks', 'useGroups.js'],
@@ -370,7 +369,6 @@ describe('privacy', () => {
         ['hooks', 'useGroups.js'],
         ['utils', 'sharedExpense.js'],
         ['components', 'GroupsCard.js'],
-        ['screens', 'groups', 'GroupRouteShell.js'],
     ];
 
     it('logs nothing from the new data layer', () => {

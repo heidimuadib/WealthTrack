@@ -457,20 +457,27 @@ describe('balance states', () => {
 
 // ---------------------------------------------------------------------------
 
-describe('settlement readiness', () => {
-    // Phase 5F owns the form. Until it exists, a pair row that looked pressable
-    // would promise a screen that cannot record anything.
-    it('offers nothing to press in the balances section yet', async () => {
+describe('settlement entry', () => {
+    // The form exists as of 5F, so the row that says a debt is now the way to
+    // settle it. Ids only — the destination resolves names and amounts from
+    // the balances it fetches for itself.
+    it('opens the settlement form from a pair row, carrying ids only', async () => {
         seed({ balanceView: balances({ pairs: [pair(PAUL, JOHN, 400, JOHN)], netBalance: 400 }) });
         const tree = await screen();
 
         const sentence = fill('balances.owesYou', { name: 'John' });
-        expect(texts(tree)).toContain(sentence);
-        expect(byText(tree, sentence)).toBeUndefined();
-        expect(navigation.navigate).not.toHaveBeenCalledWith(
-            'RecordSettlement',
-            expect.anything()
-        );
+        const row = byText(tree, sentence);
+        expect(row).toBeDefined();
+
+        await act(async () => {
+            row.props.onPress();
+        });
+
+        expect(navigation.navigate).toHaveBeenCalledWith('RecordSettlement', {
+            groupId: GROUP_ID,
+            fromMemberId: JOHN.id,
+            toMemberId: PAUL.id,
+        });
     });
 
     it('keeps the settlement route out of the balances UI until it works', () => {
@@ -701,14 +708,14 @@ describe('privacy and performance', () => {
         expect(groupBalanceService.get).toHaveBeenCalledWith(GROUP_ID);
     });
 
-    // The settlements list is not read by anything on this screen in 5E, so
-    // fetching it would be a request nobody has a use for.
-    it('does not fetch the settlements it has nowhere to show', async () => {
+    // One request for the whole payments section, however many rows it draws.
+    it('fetches the settlements exactly once for the whole payments section', async () => {
         seed({ balanceView: balances({ pairs: [pair(PAUL, JOHN, 400, JOHN)], netBalance: 400 }) });
         await screen();
         await flush();
 
-        expect(settlementService.list).not.toHaveBeenCalled();
+        expect(settlementService.list).toHaveBeenCalledTimes(1);
+        expect(settlementService.list).toHaveBeenCalledWith(GROUP_ID);
     });
 
     it('keeps balances off the Home card and the groups list', () => {

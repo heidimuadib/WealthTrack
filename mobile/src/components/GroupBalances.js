@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ArrowDownLeft, ArrowUpRight, ArrowRightLeft, CheckCircle2, Scale } from 'lucide-react-native';
 
 import Card from './Card';
@@ -40,7 +40,7 @@ const SummaryFigure = ({ label, amount, a11yKey, tone, styles, colors, t }) => (
 // Somebody's position said once, in a sentence, with the amount inside it.
 // The row is `accessible`, which collapses its children into that single stop —
 // the amount is part of the sentence rather than a separate landing point.
-const PairRow = ({ pair, currentUserMemberId, styles, colors, t, isLast }) => {
+const PairRow = ({ pair, currentUserMemberId, styles, colors, t, isLast, onSettle }) => {
     const view = pairPerspective(pair, currentUserMemberId);
     const amount = formatCurrency(pair.balance);
 
@@ -78,12 +78,8 @@ const PairRow = ({ pair, currentUserMemberId, styles, colors, t, isLast }) => {
               ? colors.danger
               : colors.textMuted;
 
-    return (
-        <View
-            style={[styles.pairRow, !isLast && styles.pairDivider]}
-            accessible
-            accessibilityLabel={a11y}
-        >
+    const body = (
+        <>
             <View style={styles.pairIcon} importantForAccessibility="no-hide-descendants">
                 <Icon color={tint} size={16} />
             </View>
@@ -91,7 +87,37 @@ const PairRow = ({ pair, currentUserMemberId, styles, colors, t, isLast }) => {
                 {sentence}
             </Text>
             <Text style={styles.pairAmount}>{amount}</Text>
-        </View>
+        </>
+    );
+
+    // Not pressable on an archived group, where there is nothing to record, and
+    // not pressable while the destination cannot act — the caller decides by
+    // passing a handler or not. A row that looked tappable and did nothing
+    // would be worse than one that never invited the tap.
+    if (!onSettle) {
+        return (
+            <View
+                style={[styles.pairRow, !isLast && styles.pairDivider]}
+                accessible
+                accessibilityLabel={a11y}
+            >
+                {body}
+            </View>
+        );
+    }
+
+    return (
+        <TouchableOpacity
+            style={[styles.pairRow, !isLast && styles.pairDivider]}
+            onPress={() => onSettle(pair)}
+            activeOpacity={0.7}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={a11y}
+            accessibilityHint={t('settle.a11yRecordHint')}
+        >
+            {body}
+        </TouchableOpacity>
     );
 };
 
@@ -107,7 +133,7 @@ const NET_COPY = {
     even: ['balances.netEven', 'balances.a11yNetEven'],
 };
 
-const GroupBalances = ({ query, archived = false, expensesAreKnownEmpty = false }) => {
+const GroupBalances = ({ query, archived = false, expensesAreKnownEmpty = false, onSettle }) => {
     const theme = useTheme();
     const { colors } = theme;
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -286,6 +312,7 @@ const GroupBalances = ({ query, archived = false, expensesAreKnownEmpty = false 
                                     pair={pair}
                                     currentUserMemberId={currentUserMemberId}
                                     isLast={index === pairs.length - 1}
+                                    onSettle={archived ? undefined : onSettle}
                                     styles={styles}
                                     colors={colors}
                                     t={t}

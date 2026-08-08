@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Users, Pencil, Archive, ChevronRight, Receipt, Plus } from 'lucide-react-native';
 
 import Card from '../../components/Card';
@@ -7,6 +8,7 @@ import Button from '../../components/Button';
 import ErrorState from '../../components/ErrorState';
 import ScreenHeader from '../../components/ScreenHeader';
 import GroupBalances from '../../components/GroupBalances';
+import GroupSettlements from '../../components/GroupSettlements';
 import { GroupListSkeleton } from '../../components/ScreenSkeletons';
 import { useFeedback } from '../../components/FeedbackProvider';
 import { resolveViewState, LOADING, ERROR } from '../../utils/viewState';
@@ -15,10 +17,12 @@ import haptics from '../../services/haptics';
 import { formatCurrency, formatDayLabel } from '../../utils/format';
 import { radius, spacing, useTheme } from '../../theme';
 import { useLanguage } from '../../i18n';
+import { SETTLEMENT_ROUTE, settlementRouteParams } from '../../utils/balances';
 import {
     useGroup,
     useGroupBalances,
     useGroupExpenses,
+    useGroupSettlements,
     useUnarchiveGroup,
 } from '../../hooks/useGroups';
 
@@ -41,6 +45,9 @@ const GroupDetailScreen = ({ navigation, route }) => {
     // shows comes out of this single response — nothing is fetched per member
     // and nothing per pair.
     const balancesQuery = useGroupBalances(groupId);
+    // The fourth and last request this screen makes. Every payment row is drawn
+    // from it — none of them costs a lookup of its own.
+    const settlementsQuery = useGroupSettlements(groupId);
     const group = query.data;
     const expenses = expensesQuery.data ?? [];
     const unarchiveGroup = useUnarchiveGroup();
@@ -55,6 +62,10 @@ const GroupDetailScreen = ({ navigation, route }) => {
     const members = group?.members ?? [];
     const activeMembers = members.filter((member) => !member.archivedAt);
 
+    // Taken from the group rather than the balances, so payment rows still say
+    // "you" when the balance request is the one that failed.
+    const currentUserMemberId = members.find((member) => member.isCurrentUser)?.id ?? null;
+
     const nameOf = (memberId) => members.find((m) => m.id === memberId)?.name ?? '';
 
     const memberLabel = (count) =>
@@ -66,7 +77,43 @@ const GroupDetailScreen = ({ navigation, route }) => {
         query.refetch();
         expensesQuery.refetch();
         balancesQuery.refetch();
-    }, [query, expensesQuery, balancesQuery]);
+        settlementsQuery.refetch();
+    }, [query, expensesQuery, balancesQuery, settlementsQuery]);
+
+    // One navigation per tap. Two presses land in the same batch before React
+    // re-renders either, and without this the stack ends up holding two copies
+    // of the settlement screen — back then has to be pressed twice to leave.
+    // Cleared on focus, so the row works again the moment the user returns.
+    const navigating = useRef(false);
+    useFocusEffect(
+        useCallback(() => {
+            navigating.current = false;
+        }, [])
+    );
+
+    const openOnce = useCallback(
+        (screen, params) => {
+            if (navigating.current) {
+                return;
+            }
+            navigating.current = true;
+            navigation.navigate(screen, params);
+        },
+        [navigation]
+    );
+
+    // Ids only. The destination reads the names and the amount from the
+    // balances it fetches for itself, which is also the figure the server will
+    // check the payment against.
+    const openSettlement = useCallback(
+        (pair) => openOnce(SETTLEMENT_ROUTE, settlementRouteParams(groupId, pair)),
+        [openOnce, groupId]
+    );
+
+    const openSettlementEdit = useCallback(
+        (settlementId) => openOnce('EditSettlement', { groupId, settlementId }),
+        [openOnce, groupId]
+    );
 
     const handleUnarchive = async () => {
         if (unarchiveGroup.isPending) {
@@ -134,10 +181,9 @@ const GroupDetailScreen = ({ navigation, route }) => {
                 refreshControl={
                     <RefreshControl
                         refreshing={query.isRefetching}
-                        // The three things this screen actually shows, and
-                        // nothing else: no other group is touched, and the
-                        // settlements list is not fetched here because no part
-                        // of this screen reads it yet.
+                        // The four things this screen shows, and nothing else.
+                        // No other group is touched and nothing app-wide is
+                        // invalidated — a pull here is about this group.
                         onRefresh={refreshAll}
                         tintColor={colors.brand}
                     />
@@ -185,36 +231,8 @@ const GroupDetailScreen = ({ navigation, route }) => {
                     expensesAreKnownEmpty={
                         expensesQuery.data !== undefined && expenses.length === 0
                     }
+                    onSettle={openSettlement}
                 />
-
-                <Text style={styles.sectionTitle} accessibilityRole="header">
-                    {t('groups.membersTitle')}
-                </Text>
-                <Card padded={false}>
-                    <View style={styles.preview}>
-                        {activeMembers.slice(0, PREVIEW).map((member) => (
-                            <View key={member.id} style={styles.previewChip}>
-                                <Text style={styles.previewName} numberOfLines={1}>
-                                    {member.isCurrentUser ? t('members.you') : member.name}
-                                </Text>
-                            </View>
-                        ))}
-                        {activeMembers.length > PREVIEW ? (
-                            <View style={styles.previewChip}>
-                                <Text style={styles.previewName}>
-                                    +{activeMembers.length - PREVIEW}
-                                </Text>
-                            </View>
-                        ) : null}
-                    </View>
-
-                    {actionRow(
-                        t('groups.manageMembers'),
-                        memberLabel(members.length),
-                        <Users color={colors.brand} size={18} />,
-                        () => navigation.navigate('ManageGroupMembers', { groupId })
-                    )}
-                </Card>
 
                 <Text style={styles.sectionTitle} accessibilityRole="header">
                     {t('groups.expensesTitle')}
@@ -314,6 +332,51 @@ const GroupDetailScreen = ({ navigation, route }) => {
                         style={styles.addExpense}
                     />
                 )}
+
+                {/* Under the bills rather than above them: a payment only means
+                    anything once the reader knows what it was against. The
+                    section removes itself entirely on a group with neither. */}
+                <GroupSettlements
+                    query={settlementsQuery}
+                    currentUserMemberId={currentUserMemberId}
+                    archived={archived}
+                    onOpen={openSettlementEdit}
+                    expensesAreKnownEmpty={
+                        expensesQuery.data !== undefined && expenses.length === 0
+                    }
+                />
+
+                {/* Management last. Who is in the group and what to do with it
+                    are what somebody comes back for, not what they open it to
+                    find out. */}
+                <Text style={styles.sectionTitle} accessibilityRole="header">
+                    {t('groups.membersTitle')}
+                </Text>
+                <Card padded={false}>
+                    <View style={styles.preview}>
+                        {activeMembers.slice(0, PREVIEW).map((member) => (
+                            <View key={member.id} style={styles.previewChip}>
+                                <Text style={styles.previewName} numberOfLines={1}>
+                                    {member.isCurrentUser ? t('members.you') : member.name}
+                                </Text>
+                            </View>
+                        ))}
+                        {activeMembers.length > PREVIEW ? (
+                            <View style={styles.previewChip}>
+                                <Text style={styles.previewName}>
+                                    +{activeMembers.length - PREVIEW}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
+
+                    {actionRow(
+                        t('groups.manageMembers'),
+                        memberLabel(members.length),
+                        <Users color={colors.brand} size={18} />,
+                        () => navigation.navigate('ManageGroupMembers', { groupId })
+                    )}
+                </Card>
 
                 <View style={styles.actions}>
                     {archived ? (
