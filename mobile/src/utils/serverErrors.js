@@ -120,6 +120,25 @@ export const SERVER_CODE_KEYS = {
     PARTICIPANT_ARCHIVED: 'server.participantArchived',
     CATEGORY_NOT_FOUND: 'server.categoryNotFound',
     EXPENSE_NOT_FOUND: 'server.expenseNotFound',
+
+    // Settlements. SETTLEMENT_EXCEEDS_BALANCE is deliberately absent, for the
+    // same reason as INVALID_SPLIT above: the server's sentence names the
+    // figure — "the most that can be repaid here is ₱60.00" — and both
+    // settlement screens catch that code themselves, refresh the balances and
+    // say the *new* maximum in the reader's own language. A fixed translation
+    // here could only be vaguer than either.
+    SETTLEMENT_NOT_FOUND: 'server.settlementNotFound',
+    NO_BALANCE_TO_SETTLE: 'server.noBalanceToSettle',
+    SETTLEMENT_CONFLICT: 'server.settlementConflict',
+    SAME_SETTLEMENT_MEMBER: 'server.sameSettlementMember',
+    FROM_MEMBER_REQUIRED: 'server.fromMemberRequired',
+    TO_MEMBER_REQUIRED: 'server.toMemberRequired',
+    FROM_MEMBER_NOT_IN_GROUP: 'server.fromMemberNotInGroup',
+    TO_MEMBER_NOT_IN_GROUP: 'server.toMemberNotInGroup',
+    FROM_MEMBER_ARCHIVED: 'server.fromMemberArchived',
+    TO_MEMBER_ARCHIVED: 'server.toMemberArchived',
+    INVALID_SETTLEMENT_AMOUNT: 'server.invalidSettlementAmount',
+    INVALID_SETTLEMENT_DATE: 'server.invalidSettlementDate',
 };
 
 export const serverCodeKey = (code) =>

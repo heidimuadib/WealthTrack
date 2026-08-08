@@ -657,7 +657,12 @@ describe('localization', () => {
             ),
             'utf8'
         );
-        const source = backend + member + access + validation + expense + sharedExpense;
+        const settlement = fs.readFileSync(
+            path.join(SRC, '..', '..', 'backend', 'src', 'controllers', 'settlement.controller.js'),
+            'utf8'
+        );
+        const source =
+            backend + member + access + validation + expense + sharedExpense + settlement;
 
         // A code the server never sends is a translation nobody ever sees.
         Object.keys(SERVER_CODE_KEYS).forEach((code) =>
