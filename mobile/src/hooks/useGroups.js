@@ -50,6 +50,17 @@ export const useGroupSettlements = (groupId) =>
         enabled: Boolean(groupId),
     });
 
+// One repayment, for the screen that edits it. Fetched rather than picked out
+// of the list cache: the editor is reachable from a notification or a reload
+// with nothing else loaded, and a form seeded from a list that happened to be
+// warm would behave differently depending on how the user arrived.
+export const useSettlement = (groupId, settlementId) =>
+    useQuery({
+        queryKey: queryKeys.groups.settlement(groupId, settlementId),
+        queryFn: async () => (await settlementService.get(groupId, settlementId)).data,
+        enabled: Boolean(groupId) && Boolean(settlementId),
+    });
+
 // Invalidation.
 //
 // Each of these names exactly what the write could have changed, and nothing

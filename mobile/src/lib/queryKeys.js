@@ -40,5 +40,16 @@ export const queryKeys = {
         expenses: (groupId) => ['groups', 'detail', groupId, 'expenses'],
         balances: (groupId) => ['groups', 'detail', groupId, 'balances'],
         settlements: (groupId) => ['groups', 'detail', groupId, 'settlements'],
+        // Nested under the list rather than beside it, so invalidating the
+        // settlements of a group refreshes the one an editor is holding open
+        // as well — the edit screen must never keep showing an amount the
+        // list has already moved past.
+        settlement: (groupId, settlementId) => [
+            'groups',
+            'detail',
+            groupId,
+            'settlements',
+            settlementId,
+        ],
     },
 };
