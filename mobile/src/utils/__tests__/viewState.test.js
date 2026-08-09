@@ -1,4 +1,12 @@
-import { resolveViewState, LOADING, ERROR, EMPTY, CONTENT } from '../viewState';
+import {
+    resolveViewState,
+    resolveRowState,
+    LOADING,
+    ERROR,
+    EMPTY,
+    CONTENT,
+    MISSING,
+} from '../viewState';
 
 // React Query's own vocabulary, so each case reads as the situation it stands
 // for rather than a bag of booleans.
@@ -69,5 +77,54 @@ describe('resolveViewState', () => {
 
     it('defaults isEmpty to false so callers without an empty branch get content', () => {
         expect(resolveViewState({ isPending: false, hasData: true })).toBe(CONTENT);
+    });
+});
+
+describe('resolveRowState', () => {
+    // A screen showing one bill out of the group's list of them.
+    const listed = { isPending: false, hasData: true, error: undefined, hasRow: true };
+    const notListed = { ...listed, hasRow: false };
+
+    it('shows the row when it is there', () => {
+        expect(resolveRowState({ ...listed, isSettled: true })).toBe(CONTENT);
+    });
+
+    // The bug this exists for. Saving a shared expense refetches the list it
+    // belongs to and hands over to the screen for that expense at once, so for
+    // as long as the refetch takes, the row is not in the list the screen
+    // holds. It has to wait, not accuse the network.
+    it('waits rather than reporting a failure while the list is still moving', () => {
+        expect(resolveRowState({ ...notListed, isSettled: false })).toBe(LOADING);
+    });
+
+    it('calls the row missing only once the list has stopped moving', () => {
+        expect(resolveRowState({ ...notListed, isSettled: true })).toBe(MISSING);
+    });
+
+    it('never turns a real failure into a missing row', () => {
+        // Nothing cached and the fetch failed: that is an error, whatever the
+        // row situation is, and a "this was deleted" message would be a lie
+        // about somebody's money.
+        expect(
+            resolveRowState({
+                isPending: false,
+                hasData: false,
+                error: new Error('offline'),
+                hasRow: false,
+                isSettled: true,
+            })
+        ).toBe(ERROR);
+    });
+
+    it('never turns a first load into a missing row', () => {
+        expect(
+            resolveRowState({
+                isPending: true,
+                hasData: false,
+                error: undefined,
+                hasRow: false,
+                isSettled: false,
+            })
+        ).toBe(LOADING);
     });
 });
