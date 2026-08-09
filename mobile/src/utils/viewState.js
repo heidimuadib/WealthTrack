@@ -20,6 +20,7 @@ export const LOADING = 'loading';
 export const ERROR = 'error';
 export const EMPTY = 'empty';
 export const CONTENT = 'content';
+export const MISSING = 'missing';
 
 export const resolveViewState = ({ isPending, hasData, error, isEmpty = false }) => {
     // Order matters. Loading first: a screen with no data and a request in
@@ -42,4 +43,31 @@ export const resolveViewState = ({ isPending, hasData, error, isEmpty = false })
     }
 
     return CONTENT;
+};
+
+// A sixth situation, for the screens that show one row picked out of a list
+// they already hold rather than fetching that row on its own: the list is here,
+// and the row this screen was opened for is not in it.
+//
+// Whether that is an absence depends entirely on whether the list has settled.
+// Every write refetches it, so in the moment between saving a bill and its list
+// coming back, the row genuinely is not in the copy the screen holds — and it
+// is about to be. Reporting that as a failure is what put "Couldn't load" on a
+// shared expense that had just been saved successfully: nothing had failed, the
+// screen was simply reading a list older than the thing it was looking for.
+//
+// `isSettled` is the caller's answer to "has the list stopped moving" — which
+// is isFetching, and deliberately not isStale. Staleness is a cache-tuning
+// number; whether a row exists is not, and a screen whose message changed after
+// thirty idle seconds would be reporting the staleTime rather than the data.
+export const resolveRowState = ({ isPending, hasData, error, hasRow, isSettled }) => {
+    const state = resolveViewState({ isPending, hasData, error });
+
+    // A failure, or nothing to read at all, is answered the same way it always
+    // was — a missing row says nothing about either.
+    if (state !== CONTENT || hasRow) {
+        return state;
+    }
+
+    return isSettled ? MISSING : LOADING;
 };

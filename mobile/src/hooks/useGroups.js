@@ -178,15 +178,53 @@ export const useDeleteMember = () =>
         async ({ groupId, memberId }) => (await groupMemberService.remove(groupId, memberId)).data
     );
 
+// Newest first, the same order the list endpoint sorts by, so a bill written
+// into the cached list below sits where the refetch behind it will leave it
+// rather than jumping once the answer lands.
+const byNewest = (a, b) => {
+    if (a.date !== b.date) {
+        return a.date < b.date ? 1 : -1;
+    }
+    return a.createdAt < b.createdAt ? 1 : -1;
+};
+
+// A written bill is put into the group's cached list, not merely invalidated.
+//
+// Invalidation says "this is out of date"; it does not say what is true in the
+// meantime. Saving replaces the editor with the bill's own screen, and that
+// screen reads the bill out of this list rather than fetching it — so without
+// this it mounts against a list that predates the bill it was opened for, finds
+// nothing, and has nothing to show but a failure that never happened. The
+// server has already answered with the whole row in exactly the shape the list
+// carries, so there is nothing to wait for.
+//
+// The refetch still runs and still wins. This only decides what the next screen
+// reads while it is on the wire.
+const putInGroupList = (client, groupId, expense) => {
+    client.setQueryData(queryKeys.groups.expenses(groupId), (list) =>
+        // Nothing cached means no list to be inconsistent with, and a
+        // one-row list here would claim to be the whole group's history.
+        // Left alone, so the fetch that is coming brings all of it.
+        list === undefined
+            ? undefined
+            : [...list.filter((row) => row.id !== expense.id), expense].sort(byNewest)
+    );
+};
+
 // A shared expense is the one write that reaches outside its group: it changes
 // the group's own ledger AND the user's personal spending, through the mirrored
 // row the server keeps in step.
-const useSharedExpenseMutation = (mutationFn) => {
+const useSharedExpenseMutation = (mutationFn, { writesRow = false } = {}) => {
     const client = useQueryClient();
 
     return useMutation({
         mutationFn,
-        onSuccess: (_result, { groupId }) => {
+        onSuccess: (result, { groupId }) => {
+            // Before the invalidation rather than after: this is what the
+            // screens read until the refetch it starts comes back.
+            if (writesRow) {
+                putInGroupList(client, groupId, result);
+            }
             invalidateGroup(client, groupId);
             invalidatePersonalSpending(client);
         },
@@ -195,15 +233,19 @@ const useSharedExpenseMutation = (mutationFn) => {
 
 export const useCreateSharedExpense = () =>
     useSharedExpenseMutation(
-        async ({ groupId, ...data }) => (await sharedExpenseService.create(groupId, data)).data
+        async ({ groupId, ...data }) => (await sharedExpenseService.create(groupId, data)).data,
+        { writesRow: true }
     );
 
 export const useUpdateSharedExpense = () =>
     useSharedExpenseMutation(
         async ({ groupId, expenseId, ...data }) =>
-            (await sharedExpenseService.update(groupId, expenseId, data)).data
+            (await sharedExpenseService.update(groupId, expenseId, data)).data,
+        { writesRow: true }
     );
 
+// Deletion answers { deleted: true } rather than a row, and there is nothing to
+// put anywhere. The invalidation is the whole of it.
 export const useDeleteSharedExpense = () =>
     useSharedExpenseMutation(
         async ({ groupId, expenseId }) => (await sharedExpenseService.remove(groupId, expenseId)).data

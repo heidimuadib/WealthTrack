@@ -3,10 +3,11 @@ import { View, StyleSheet } from 'react-native';
 
 import SharedExpenseForm, { MAX_DESCRIPTION, MAX_NOTE } from '../../components/SharedExpenseForm';
 import ErrorState from '../../components/ErrorState';
+import EmptyState from '../../components/EmptyState';
 import ScreenHeader from '../../components/ScreenHeader';
 import { GroupListSkeleton } from '../../components/ScreenSkeletons';
 import { useFeedback } from '../../components/FeedbackProvider';
-import { resolveViewState, LOADING, ERROR } from '../../utils/viewState';
+import { resolveRowState, LOADING, ERROR, MISSING } from '../../utils/viewState';
 import { errorMessage } from '../../utils/error';
 import { toCentavos, fromCentavos, buildParticipants } from '../../utils/splitMath';
 import haptics from '../../services/haptics';
@@ -55,13 +56,17 @@ const EditSharedExpenseScreen = ({ navigation, route }) => {
         setDraft(draftFromExpense(expense));
     }, [expense, setDraft]);
 
-    const state = resolveViewState({
+    const state = resolveRowState({
         isPending: groupQuery.isPending || expenseQuery.isPending || categoryQuery.isPending,
         hasData:
             groupQuery.data !== undefined &&
             expenseQuery.data !== undefined &&
             categoryQuery.data !== undefined,
         error: groupQuery.error || expenseQuery.error,
+        hasRow: expense !== undefined,
+        // Same rule the detail screen reads by: a bill missing from a list
+        // still in flight is one that has not arrived, not one that failed.
+        isSettled: !expenseQuery.isFetching,
     });
 
     const handleSubmit = async () => {
@@ -133,13 +138,30 @@ const EditSharedExpenseScreen = ({ navigation, route }) => {
         );
     }
 
-    if (state === ERROR || !expense) {
+    if (state === ERROR) {
         return (
             <View style={styles.container}>
                 {header}
                 <ErrorState
                     error={groupQuery.error || expenseQuery.error}
                     onRetry={expenseQuery.refetch}
+                />
+            </View>
+        );
+    }
+
+    // There is nothing left to edit, and no failure to retry. An editor that
+    // offered "Try again" here would be inviting the user to reload a bill
+    // that no longer exists.
+    if (state === MISSING) {
+        return (
+            <View style={styles.container}>
+                {header}
+                <EmptyState
+                    title={t('shared.goneTitle')}
+                    message={t('shared.goneMsg')}
+                    actionLabel={t('shared.goneBack')}
+                    onAction={() => navigation.goBack()}
                 />
             </View>
         );

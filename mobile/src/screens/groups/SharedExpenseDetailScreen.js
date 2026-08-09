@@ -1,14 +1,15 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Pencil, Trash2 } from 'lucide-react-native';
+import { Pencil, Trash2, Receipt } from 'lucide-react-native';
 
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import ErrorState from '../../components/ErrorState';
+import EmptyState from '../../components/EmptyState';
 import ScreenHeader from '../../components/ScreenHeader';
 import { GroupListSkeleton } from '../../components/ScreenSkeletons';
 import { useFeedback } from '../../components/FeedbackProvider';
-import { resolveViewState, LOADING, ERROR } from '../../utils/viewState';
+import { resolveRowState, LOADING, ERROR, MISSING } from '../../utils/viewState';
 import { errorMessage } from '../../utils/error';
 import { formatCurrency, formatDayLabel } from '../../utils/format';
 import { toCentavos, methodFromServer } from '../../utils/splitMath';
@@ -45,10 +46,15 @@ const SharedExpenseDetailScreen = ({ navigation, route }) => {
     const expense = (expenseQuery.data ?? []).find((row) => row.id === sharedExpenseId);
     const archived = Boolean(group?.archivedAt);
 
-    const state = resolveViewState({
+    const state = resolveRowState({
         isPending: groupQuery.isPending || expenseQuery.isPending,
         hasData: groupQuery.data !== undefined && expenseQuery.data !== undefined,
         error: groupQuery.error || expenseQuery.error,
+        hasRow: expense !== undefined,
+        // A bill absent from a list still on the wire has not arrived yet; one
+        // absent from a list that has stopped moving is genuinely gone. Only
+        // the second is worth telling the user about.
+        isSettled: !expenseQuery.isFetching,
     });
 
     const members = group?.members ?? [];
@@ -107,13 +113,31 @@ const SharedExpenseDetailScreen = ({ navigation, route }) => {
         );
     }
 
-    if (state === ERROR || !expense) {
+    if (state === ERROR) {
         return (
             <View style={styles.container}>
                 {header}
                 <ErrorState
                     error={groupQuery.error || expenseQuery.error}
                     onRetry={expenseQuery.refetch}
+                />
+            </View>
+        );
+    }
+
+    // Nothing failed here, so nothing apologises for a failure. The bill was
+    // deleted — most likely from somewhere else — and saying so is the only
+    // honest thing on the screen.
+    if (state === MISSING) {
+        return (
+            <View style={styles.container}>
+                {header}
+                <EmptyState
+                    icon={Receipt}
+                    title={t('shared.goneTitle')}
+                    message={t('shared.goneMsg')}
+                    actionLabel={t('shared.goneBack')}
+                    onAction={() => navigation.goBack()}
                 />
             </View>
         );

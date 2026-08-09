@@ -292,6 +292,12 @@ const en = {
     'shared.deleteTitle': 'Delete this shared expense?',
     'shared.deleteMsg': 'Its participant shares and any linked personal expense will also be removed. Recorded payments will stay, so the group balances may change and someone may end up with a credit.',
     'shared.deleted': 'Shared expense deleted',
+    // For a bill that is not there any more — deleted from another device, or
+    // from a link older than the thing it points at. Deliberately not phrased
+    // as a failure: nothing went wrong, and there is nothing to retry.
+    'shared.goneTitle': 'This expense is gone',
+    'shared.goneMsg': 'It was deleted, possibly from another device.',
+    'shared.goneBack': 'Back to the group',
     'shared.a11yShare': '{name}, {amount}',
     'shared.a11yPayer': 'Paid by {name}',
     'shared.a11yChoosePayer': 'Choose who paid',
@@ -1030,6 +1036,9 @@ const fil = {
     'shared.deleteTitle': 'Burahin ang hinating gastos na ito?',
     'shared.deleteMsg': 'Mabubura rin ang parte ng bawat kasama at ang naka-ugnay na personal na gastos. Mananatili ang mga naitalang bayad, kaya maaaring magbago ang balanse ng grupo at may matirahan ng sobra.',
     'shared.deleted': 'Nabura ang hinating gastos',
+    'shared.goneTitle': 'Wala na ang gastos na ito',
+    'shared.goneMsg': 'Nabura ito, maaaring mula sa ibang device.',
+    'shared.goneBack': 'Balik sa grupo',
     'shared.a11yShare': '{name}, {amount}',
     'shared.a11yPayer': 'Nagbayad si {name}',
     'shared.a11yChoosePayer': 'Piliin kung sino ang nagbayad',
@@ -1735,6 +1744,9 @@ const ceb = {
     'shared.deleteTitle': 'Papason kini nga gibahin nga gasto?',
     'shared.deleteMsg': 'Mapapas pod ang parte sa matag kauban ug ang konektado nga personal nga gasto. Magpabilin ang natala nga mga bayad, mao nga mahimong mausab ang balanse sa grupo ug naay mahibilinan og sobra.',
     'shared.deleted': 'Napapas ang gibahin nga gasto',
+    'shared.goneTitle': 'Wala na kini nga gasto',
+    'shared.goneMsg': 'Napapas kini, basin gikan sa laing device.',
+    'shared.goneBack': 'Balik sa grupo',
     'shared.a11yShare': '{name}, {amount}',
     'shared.a11yPayer': 'Nibayad si {name}',
     'shared.a11yChoosePayer': 'Pilia kinsay nibayad',
